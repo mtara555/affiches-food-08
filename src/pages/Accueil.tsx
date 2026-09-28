@@ -1,11 +1,12 @@
 /**
- * Etape 0 — page d'accueil provisoire : confirme que la nouvelle structure
- * est deployee et suit l'avancement de la reconstruction.
+ * Tableau de bord provisoire : suit l'avancement de la reconstruction.
+ * Il sera remplace par le vrai tableau de bord a l'etape 7.
  */
 
-import { APP_NAME, APP_VERSION, MAGASIN } from '../config/constants';
-import logo from '../assets/img/logo-marjane.jpg';
-import './Accueil.css';
+import { AppShell } from '../components/AppShell';
+import { useAuth } from '../context/AuthContext';
+import { LIBELLE_ROLE } from '../config/constants';
+import { afficherIdentifiant } from '../lib/auth';
 
 /** L'ancienne application reste dans son propre depot, inchangee. */
 const ANCIENNE = 'https://mtarabet72.github.io/G-n-rateur-A4-A7_marjane08_6-265/';
@@ -13,8 +14,8 @@ const ANCIENNE = 'https://mtarabet72.github.io/G-n-rateur-A4-A7_marjane08_6-265/
 type Etat = 'fait' | 'en-cours' | 'a-venir';
 
 const ETAPES: readonly { code: string; libelle: string; etat: Etat }[] = [
-  { code: '0', libelle: 'Nouveau depot : structure React / Vite et deploiement automatique GitHub Pages', etat: 'en-cours' },
-  { code: '1', libelle: 'Firebase : projet, connexion, roles, premier administrateur', etat: 'a-venir' },
+  { code: '0', libelle: 'Nouveau depot : structure React / Vite et deploiement automatique GitHub Pages', etat: 'fait' },
+  { code: '1', libelle: 'Firebase : projet, connexion, roles, premier administrateur', etat: 'en-cours' },
   { code: '2', libelle: 'Catalogue articles partage + reprise des donnees de l’ancienne application', etat: 'a-venir' },
   { code: '3', libelle: 'Gabarits A7, affiches, balisage et bibliotheque de pictos', etat: 'a-venir' },
   { code: '4', libelle: 'Campagnes, saisie et impression des etiquettes A7', etat: 'a-venir' },
@@ -26,26 +27,23 @@ const ETAPES: readonly { code: string; libelle: string; etat: Etat }[] = [
 const LIBELLE: Readonly<Record<Etat, string>> = { fait: 'Termine', 'en-cours': 'En cours', 'a-venir': 'A venir' };
 
 export function Accueil() {
+  const { utilisateur } = useAuth();
   return (
-    <div className="accueil">
-      <div className="accueil__carte">
-        <div className="accueil__entete">
-          <img className="accueil__logo" src={logo} alt="" aria-hidden="true" />
-          <div>
-            <h1 className="accueil__titre">{APP_NAME}</h1>
-            <p className="accueil__version">v{APP_VERSION} · {MAGASIN}</p>
-          </div>
-        </div>
-
+    <AppShell
+      titre={`Bonjour ${utilisateur?.nom ?? ''}`}
+      sousTitre="Nouvelle version en construction"
+      actions={<a className="bouton bouton--principal" href={ANCIENNE}>Application actuelle</a>}
+    >
+      <section className="carte carte--session">
+        <h2 className="carte__titre">Session</h2>
         <p className="carte__texte">
-          Nouvelle version en construction. En attendant, l&apos;application actuelle reste disponible
-          avec toutes ses donnees :
+          Connecte en tant que <strong>{utilisateur?.nom}</strong> ({afficherIdentifiant(utilisateur?.email ?? '')}) —
+          role <strong>{utilisateur ? LIBELLE_ROLE[utilisateur.role] : ''}</strong>. La connexion Firebase fonctionne.
         </p>
-        <a className="bouton bouton--principal accueil__lien" href={ANCIENNE}>
-          Ouvrir l&apos;application actuelle (Etiquettes A7 / A4 / Balisage)
-        </a>
+      </section>
 
-        <h2 className="carte__titre accueil__sous-titre">Avancement de la reconstruction</h2>
+      <section className="carte">
+        <h2 className="carte__titre">Avancement de la reconstruction</h2>
         <ol className="etapes">
           {ETAPES.map((e) => (
             <li key={e.code} className={`etape etape--${e.etat}`}>
@@ -55,7 +53,7 @@ export function Accueil() {
             </li>
           ))}
         </ol>
-      </div>
-    </div>
+      </section>
+    </AppShell>
   );
 }

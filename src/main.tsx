@@ -4,6 +4,8 @@ import { HashRouter } from 'react-router-dom';
 import { App } from './App';
 import './styles/global.css';
 import './styles/composants.css';
+import './styles/mobile.css';
+import { installerTableauxMobiles } from './lib/tableaux-mobiles';
 
 /**
  * HashRouter : GitHub Pages ne sait pas rediriger les URL profondes vers
@@ -11,6 +13,8 @@ import './styles/composants.css';
  */
 const conteneur = document.getElementById('root');
 if (!conteneur) throw new Error('Element #root introuvable dans index.html.');
+
+installerTableauxMobiles();
 
 createRoot(conteneur).render(
   <StrictMode>

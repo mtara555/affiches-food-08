@@ -1,0 +1,37 @@
+.notifications {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.notification {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  color: var(--ink-inverse);
+  font-size: var(--text-sm);
+  box-shadow: var(--shadow-2);
+  border-left: 3px solid var(--brand-yellow);
+  animation: apparition 160ms var(--ease);
+}
+
+.notification--succes {
+  border-left-color: #3ddc97;
+}
+
+.notification--erreur {
+  border-left-color: #ff5c6c;
+}
+
+@keyframes apparition {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}

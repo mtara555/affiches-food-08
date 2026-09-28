@@ -1,0 +1,101 @@
+rules_version = '2';
+
+// ============================================================================
+// AFFICHES FOOD & NON FOOD — Regles de securite Firestore
+// ----------------------------------------------------------------------------
+// A copier dans la console Firebase : Firestore Database > Regles > Publier.
+//
+// Principe : il faut etre connecte ET avoir un document utilisateurs/{uid}
+// actif. Le role (operateur / administrateur) est lu dans ce document : il ne
+// peut etre modifie que par un administrateur.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function connecte() {
+      return request.auth != null;
+    }
+
+    function profil() {
+      return get(/databases/$(database)/documents/utilisateurs/$(request.auth.uid)).data;
+    }
+
+    function actif() {
+      return connecte()
+        && exists(/databases/$(database)/documents/utilisateurs/$(request.auth.uid))
+        && profil().actif == true;
+    }
+
+    function admin() {
+      return actif() && profil().role == 'administrateur';
+    }
+
+    // --- Utilisateurs -------------------------------------------------------
+    // Chacun lit sa fiche ; seuls les administrateurs gerent les comptes.
+    match /utilisateurs/{uid} {
+      allow read: if connecte() && (request.auth.uid == uid || admin());
+      allow create, update: if admin();
+      allow delete: if false;
+    }
+
+    // --- Catalogue ----------------------------------------------------------
+    // Lecture et saisie par tous les utilisateurs actifs (ajout d'un article
+    // inconnu depuis la saisie), suppression par les administrateurs.
+    match /articles/{code} {
+      allow read: if actif();
+      allow create, update: if actif()
+        && request.resource.data.designationFr is string
+        && request.resource.data.designationFr.size() <= 200;
+      allow delete: if admin();
+    }
+
+    // --- Campagnes et elements ---------------------------------------------
+    match /campagnes/{campagneId} {
+      allow read: if actif();
+      allow create: if actif() && request.resource.data.creePar == request.auth.uid;
+      // Tout operateur peut ajouter des elements (compteur, date) ; renommer,
+      // archiver ou supprimer reste au createur ou a un administrateur.
+      allow update: if actif() && (
+        admin()
+        || resource.data.creePar == request.auth.uid
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nbElements', 'majLe', 'statut', 'format'])
+      );
+      allow delete: if admin() || (actif() && resource.data.creePar == request.auth.uid);
+
+      match /elements/{elementId} {
+        allow read, create, update: if actif();
+        allow delete: if actif();
+      }
+    }
+
+    // --- Gabarits, pictos, parametres --------------------------------------
+    match /gabaritsA7/{id} {
+      allow read: if actif();
+      allow write: if admin();
+    }
+    match /gabaritsAffiche/{id} {
+      allow read: if actif();
+      allow write: if admin();
+    }
+    match /gabaritsBalisage/{id} {
+      allow read: if actif();
+      allow write: if admin();
+    }
+    match /pictos/{id} {
+      allow read: if actif();
+      allow write: if admin();
+    }
+    match /parametres/{id} {
+      allow read: if actif();
+      allow write: if admin();
+    }
+
+    // --- Journal : ajout seulement, lecture administrateurs ----------------
+    match /journal/{id} {
+      allow create: if actif() && request.resource.data.userId == request.auth.uid;
+      allow read: if admin();
+      allow update, delete: if false;
+    }
+  }
+}
