@@ -10,19 +10,19 @@
  * compressees dans le navigateur puis rangees directement dans Firestore
  * (voir lib/images.ts), sous la limite de 1 Mo par document.
  *
- * Le cache local persistant (IndexedDB) garde les donnees deja lues : la
- * saisie continue de fonctionner hors ligne, et les ecritures sont envoyees
- * au retour du reseau.
+ * Cache Firestore en memoire (et non persistant multi-onglets) : avec le cache
+ * persistant, seul l'onglet « principal » parle au serveur ; si cet onglet est
+ * en veille ou fige par le navigateur, les ecritures des autres onglets
+ * restent en attente indefiniment. Le catalogue, lui, a sa propre copie
+ * locale (lib/articles.ts) et reste disponible hors ligne.
+ *
+ * La detection automatique du « long polling » permet de fonctionner derriere
+ * les proxys et pare-feu d'entreprise qui bloquent les connexions en continu.
  */
 
 import { initializeApp, type FirebaseApp, type FirebaseOptions } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import {
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
-  type Firestore,
-} from 'firebase/firestore';
+import { initializeFirestore, memoryLocalCache, type Firestore } from 'firebase/firestore';
 
 export const configuration: FirebaseOptions = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? '',
@@ -42,14 +42,10 @@ export const app: FirebaseApp = initializeApp(
 export const auth = getAuth(app);
 
 function creerFirestore(): Firestore {
-  try {
-    return initializeFirestore(app, {
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-    });
-  } catch {
-    // Navigation privee ou IndexedDB indisponible : cache en memoire.
-    return initializeFirestore(app, {});
-  }
+  return initializeFirestore(app, {
+    localCache: memoryLocalCache(),
+    experimentalAutoDetectLongPolling: true,
+  });
 }
 
 export const db: Firestore = creerFirestore();
