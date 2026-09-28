@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DocumentSnapshot } from 'firebase/firestore';
 import { AppShell } from '../components/AppShell';
 import { ChampTexte } from '../components/ChampTexte';
 import { notifier } from '../components/Notifications';
 import { useAuth } from '../context/AuthContext';
 import { useDonnees } from '../context/DonneesContext';
 import {
-  compterArticles,
+  chargerCatalogue,
   enregistrerArticle,
   importerArticles,
-  pageArticles,
+  rechercherArticles,
   supprimerArticle,
   tousLesArticles,
   trouverArticle,
@@ -27,11 +26,10 @@ export function Catalogue() {
   const { utilisateur, estAdmin } = useAuth();
   const { gabaritsA7 } = useDonnees();
   const [recherche, setRecherche] = useState('');
-  const [articles, setArticles] = useState<Article[]>([]);
+  const [resultats, setResultats] = useState<Article[]>([]);
   const [total, setTotal] = useState<number | null>(null);
-  const [curseurs, setCurseurs] = useState<(DocumentSnapshot | null)[]>([null]);
-  const [suivant, setSuivant] = useState<DocumentSnapshot | null>(null);
-  const [chargement, setChargement] = useState(false);
+  const [page, setPage] = useState(0);
+  const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
   const [fiche, setFiche] = useState<ArticleSaisi | null>(null);
   const [ficheNouvelle, setFicheNouvelle] = useState(false);
@@ -40,15 +38,17 @@ export function Catalogue() {
   const [progression, setProgression] = useState<string | null>(null);
   const minuterie = useRef<number>();
 
-  const page = curseurs.length - 1;
+  const PAR_PAGE = 50;
+  const articles = resultats.slice(page * PAR_PAGE, (page + 1) * PAR_PAGE);
+  const pages = Math.max(1, Math.ceil(resultats.length / PAR_PAGE));
 
-  const charger = useCallback(async (texte: string, curseur: DocumentSnapshot | null) => {
-    setChargement(true);
+  const charger = useCallback(async (texte: string) => {
     setErreur(null);
     try {
-      const r = await pageArticles(texte, curseur);
-      setArticles(r.articles);
-      setSuivant(r.suivant);
+      const r = await rechercherArticles(texte);
+      setResultats(r);
+      setPage(0);
+      setTotal((await chargerCatalogue()).size);
     } catch (e) {
       setErreur(messageErreur(e));
     } finally {
@@ -56,31 +56,18 @@ export function Catalogue() {
     }
   }, []);
 
+  // Premier chargement : synchronisation des lots modifies depuis la derniere visite.
   useEffect(() => {
-    window.clearTimeout(minuterie.current);
-    minuterie.current = window.setTimeout(() => {
-      setCurseurs([null]);
-      void charger(recherche, null);
-    }, 300);
-    return () => window.clearTimeout(minuterie.current);
-  }, [recherche, charger]);
-
-  useEffect(() => {
-    compterArticles().then(setTotal).catch(() => setTotal(null));
+    chargerCatalogue((fait, tot) => setProgression(tot ? `Synchronisation du catalogue : ${fait} / ${tot} lot(s)…` : null))
+      .then(() => setProgression(null))
+      .catch((e) => setErreur(messageErreur(e)));
   }, []);
 
-  function pageSuivante() {
-    if (!suivant) return;
-    setCurseurs((c) => [...c, suivant]);
-    void charger(recherche, suivant);
-  }
-
-  function pagePrecedente() {
-    if (curseurs.length < 2) return;
-    const c = curseurs.slice(0, -1);
-    setCurseurs(c);
-    void charger(recherche, c[c.length - 1] ?? null);
-  }
+  useEffect(() => {
+    window.clearTimeout(minuterie.current);
+    minuterie.current = window.setTimeout(() => void charger(recherche), 250);
+    return () => window.clearTimeout(minuterie.current);
+  }, [recherche, charger]);
 
   async function enregistrer() {
     if (!fiche || !utilisateur) return;
@@ -97,7 +84,7 @@ export function Catalogue() {
       tracer(ficheNouvelle ? 'creation' : 'modification', 'articles', `${fiche.code} — ${fiche.designationFr}`);
       notifier('Article enregistre.');
       setFiche(null);
-      void charger(recherche, curseurs[curseurs.length - 1] ?? null);
+      void charger(recherche);
     } catch (e) {
       notifier(messageErreur(e), 'erreur');
     } finally {
@@ -110,7 +97,7 @@ export function Catalogue() {
     try {
       await supprimerArticle(a.code);
       tracer('suppression', 'articles', `${a.code} — ${a.designationFr}`);
-      setArticles((l) => l.filter((x) => x.code !== a.code));
+      void charger(recherche);
     } catch (e) {
       notifier(messageErreur(e), 'erreur');
     }
@@ -160,9 +147,7 @@ export function Catalogue() {
       tracer('creation', 'articles', `Import Excel « ${import_.nom} » : ${liste.length} article(s)`);
       notifier(`${liste.length} article(s) importe(s).`);
       setImport(null);
-      compterArticles().then(setTotal).catch(() => undefined);
-      void charger(recherche, null);
-      setCurseurs([null]);
+      void charger(recherche);
     } catch (e) {
       notifier(messageErreur(e), 'erreur');
     } finally {
@@ -172,8 +157,8 @@ export function Catalogue() {
 
   async function exporter() {
     try {
-      setProgression('Lecture du catalogue…');
-      const tous = await tousLesArticles((n) => setProgression(`Lecture ${n} articles…`));
+      setProgression('Preparation du fichier…');
+      const tous = await tousLesArticles();
       await ecrireClasseur(
         [ENTETE, ...tous.map((a) => [a.code, a.designationFr, a.designationAr, a.ingredientsFr, a.ingredientsAr, a.origine, a.colJ, a.gabaritA7])],
         'Catalogue',
@@ -234,7 +219,7 @@ export function Catalogue() {
           <input
             type="search"
             className="recherche"
-            placeholder="Rechercher un code (debut) ou une designation FR (debut)…"
+            placeholder="Code (debut) ou mots de la designation : « lait 1l », « croissant »…"
             value={recherche}
             onChange={(e) => setRecherche(e.target.value)}
           />
@@ -284,9 +269,11 @@ export function Catalogue() {
           </table>
         )}
         <div className="pagination">
-          <button type="button" className="bouton bouton--discret bouton--petit" disabled={page === 0 || chargement} onClick={pagePrecedente}>‹ Precedent</button>
-          <span className="pagination__position">Page {page + 1}</span>
-          <button type="button" className="bouton bouton--discret bouton--petit" disabled={!suivant || chargement} onClick={pageSuivante}>Suivant ›</button>
+          <button type="button" className="bouton bouton--discret bouton--petit" disabled={page === 0} onClick={() => setPage(page - 1)}>‹ Precedent</button>
+          <span className="pagination__position">
+            Page {page + 1} / {pages} — {resultats.length.toLocaleString('fr-FR')} resultat(s)
+          </span>
+          <button type="button" className="bouton bouton--discret bouton--petit" disabled={page >= pages - 1} onClick={() => setPage(page + 1)}>Suivant ›</button>
         </div>
       </section>
 

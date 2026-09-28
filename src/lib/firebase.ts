@@ -57,7 +57,7 @@ export const db: Firestore = creerFirestore();
 /** Noms des collections, regroupes pour eviter les chaines disseminees. */
 export const COLLECTIONS = {
   UTILISATEURS: 'utilisateurs',
-  ARTICLES: 'articles',
+  CATALOGUE: 'catalogue',
   CAMPAGNES: 'campagnes',
   ELEMENTS: 'elements',
   GABARITS_A7: 'gabaritsA7',

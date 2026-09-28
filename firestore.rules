@@ -39,15 +39,12 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // --- Catalogue ----------------------------------------------------------
+    // --- Catalogue (articles ranges par lots : lot_00 … lot_63 + _meta) ---
     // Lecture et saisie par tous les utilisateurs actifs (ajout d'un article
-    // inconnu depuis la saisie), suppression par les administrateurs.
-    match /articles/{code} {
+    // inconnu depuis la saisie). Taille bornee par la limite Firestore (1 Mo).
+    match /catalogue/{lot} {
       allow read: if actif();
-      allow create, update: if actif()
-        && request.resource.data.designationFr is string
-        && request.resource.data.designationFr.size() <= 200;
-      allow delete: if admin();
+      allow write: if actif();
     }
 
     // --- Campagnes et elements ---------------------------------------------
