@@ -1,0 +1,1138 @@
+/* Composants communs — repris d'AFFICHES-EM (cartes, boutons, champs, tableaux) */
+.carte {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-5);
+  margin-bottom: var(--space-4);
+}
+
+.carte__titre {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+  margin-bottom: var(--space-4);
+}
+
+.carte__texte {
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.carte__texte + .carte__texte {
+  margin-top: var(--space-2);
+}
+
+.carte__texte--discret {
+  color: var(--ink-faint);
+  font-size: var(--text-xs);
+}
+
+.carte code {
+  font-family: var(--font-mono);
+  font-size: 0.95em;
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 1px 5px;
+}
+
+/* --------------------------------------------------------------------------
+   Verification de configuration
+   -------------------------------------------------------------------------- */
+
+.carte--verification.est-attente {
+  border-left: 3px solid var(--brand-yellow);
+}
+
+.carte--verification.est-ok {
+  border-left: 3px solid var(--ok);
+}
+
+/* --------------------------------------------------------------------------
+   Liste des etapes
+   -------------------------------------------------------------------------- */
+
+.etapes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.etape {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+}
+
+.etape__code {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  color: var(--ink-faint);
+  min-width: 26px;
+}
+
+.etape__libelle {
+  flex: 1;
+  min-width: 0;
+}
+
+.etape__etat {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.etape--fait {
+  background: rgba(26, 143, 94, 0.06);
+}
+
+.etape--fait .etape__etat {
+  background: rgba(26, 143, 94, 0.12);
+  color: var(--ok);
+}
+
+.etape--en-cours {
+  background: rgba(242, 183, 5, 0.08);
+}
+
+.etape--en-cours .etape__etat {
+  background: rgba(242, 183, 5, 0.18);
+  color: var(--warn);
+}
+
+.etape--a-venir {
+  color: var(--ink-faint);
+}
+
+.etape--a-venir .etape__etat {
+  background: var(--surface-sunken);
+  color: var(--ink-faint);
+}
+
+/* --------------------------------------------------------------------------
+   Tableau
+   -------------------------------------------------------------------------- */
+
+.tableau {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.tableau th,
+.tableau td {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.tableau thead th {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
+
+.tableau tbody th {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  color: var(--brand-blue);
+}
+
+.tableau tbody tr:last-child th,
+.tableau tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.carte--session {
+  border-left: 3px solid var(--ok);
+}
+
+/* --------------------------------------------------------------------------
+   Statistiques
+   -------------------------------------------------------------------------- */
+
+.tuiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.tuile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.tuile__libelle {
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+}
+
+.tuile__valeur {
+  font-size: 2rem;
+  font-weight: var(--weight-semibold);
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.tuile__detail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.tuile__detail i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  margin-left: 4px;
+}
+
+.tuile__detail i:first-child {
+  margin-left: 0;
+}
+
+.carte__entete-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.carte__entete-stats .carte__titre {
+  margin-bottom: var(--space-1);
+}
+
+.segments {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.segments__bouton {
+  border: 0;
+  background: transparent;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.segments__bouton:hover {
+  color: var(--ink);
+}
+
+.segments__bouton.est-actif {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: var(--weight-semibold);
+  box-shadow: 0 1px 2px rgba(14, 19, 48, 0.12);
+}
+
+.segments__bouton:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.carte .legende {
+  margin-bottom: var(--space-2);
+}
+
+.carte .graphique {
+  margin-bottom: var(--space-3);
+}
+
+.tableau-defilant {
+  overflow-x: auto;
+  margin-top: var(--space-3);
+}
+
+.tableau--stats td,
+.tableau--stats th {
+  font-variant-numeric: tabular-nums;
+}
+
+.tableau--stats th[scope='row'] {
+  font-weight: var(--weight-normal);
+  text-transform: capitalize;
+}
+
+.bouton--espace {
+  margin-top: var(--space-3);
+}
+/* Reprend les classes .carte, .carte__titre, .carte__texte et .tableau
+   definies dans TableauDeBord.css, importe globalement par cette page. */
+
+
+/* --------------------------------------------------------------------------
+   Bandeaux de retour
+   -------------------------------------------------------------------------- */
+
+.bandeau {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-4);
+  line-height: 1.5;
+}
+
+.bandeau--erreur {
+  background: rgba(200, 16, 46, 0.07);
+  border-left: 3px solid var(--danger);
+  color: var(--danger);
+}
+
+.bandeau--succes {
+  background: rgba(26, 143, 94, 0.07);
+  border-left: 3px solid var(--ok);
+  color: var(--ok);
+}
+
+/* --------------------------------------------------------------------------
+   Carte d'import
+   -------------------------------------------------------------------------- */
+
+.carte--import {
+  border-left: 3px solid var(--brand-yellow);
+}
+
+.carte--import .bouton {
+  margin-top: var(--space-4);
+}
+
+.carte__entete {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.carte__entete .carte__titre {
+  margin-bottom: 0;
+}
+
+.progression {
+  position: relative;
+  margin-top: var(--space-4);
+  height: 26px;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.progression__barre {
+  height: 100%;
+  background: var(--brand-blue);
+  transition: width 120ms linear;
+}
+
+.progression__texte {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink);
+}
+
+/* --------------------------------------------------------------------------
+   Formulaire
+   -------------------------------------------------------------------------- */
+
+.formulaire-ligne {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.champ--extensible {
+  flex: 1;
+  min-width: 200px;
+}
+
+.case {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  padding-bottom: 10px;
+  white-space: nowrap;
+}
+
+.case input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--brand-blue);
+}
+
+.recherche {
+  margin-left: auto;
+  min-width: 200px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 7px 11px;
+  font-size: var(--text-sm);
+  background: var(--surface-sunken);
+}
+
+.recherche:focus {
+  border-color: var(--brand-blue);
+  background: var(--surface);
+  outline: none;
+}
+
+/* --------------------------------------------------------------------------
+   Boutons
+   -------------------------------------------------------------------------- */
+
+.bouton {
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  transition: background var(--duration) var(--ease), color var(--duration) var(--ease);
+  white-space: nowrap;
+}
+
+.bouton--petit {
+  padding: 5px 10px;
+  font-size: var(--text-xs);
+}
+
+.bouton--principal {
+  background: var(--brand-blue);
+  color: var(--ink-inverse);
+}
+
+.bouton--principal:hover:not(:disabled) {
+  background: var(--brand-blue-deep);
+}
+
+.bouton--discret {
+  background: var(--surface-sunken);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+}
+
+.bouton--discret:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.bouton--danger {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--line);
+}
+
+.bouton--danger:hover:not(:disabled) {
+  background: rgba(200, 16, 46, 0.07);
+  border-color: var(--danger);
+}
+
+.bouton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* --------------------------------------------------------------------------
+   Tableau des marques
+   -------------------------------------------------------------------------- */
+
+.tableau--marques tbody th {
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+
+.tableau--marques tr.est-editee {
+  background: rgba(21, 43, 122, 0.05);
+}
+
+.colonne-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.colonne-actions .bouton + .bouton {
+  margin-left: var(--space-2);
+}
+
+.etiquette {
+  display: inline-block;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  color: var(--ink-faint);
+}
+
+.etiquette--ok {
+  background: rgba(26, 143, 94, 0.12);
+  color: var(--ok);
+}
+
+.etiquette--inactive {
+  background: rgba(200, 16, 46, 0.09);
+  color: var(--danger);
+}
+
+/* Un lien stylise en bouton doit rester lisible et aligne. */
+a.bouton {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+/* --------------------------------------------------------------------------
+   Logos
+   -------------------------------------------------------------------------- */
+
+.cellule-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.vignette-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 40px;
+  padding: 3px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  flex: none;
+  overflow: hidden;
+}
+
+.vignette-logo img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.vignette-logo__vide {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+label.bouton {
+  cursor: pointer;
+}
+
+label.bouton.est-desactive {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+label.bouton:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.tableau--lot select {
+  max-width: 220px;
+  padding: 5px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--text-sm);
+  background: var(--surface);
+}
+
+.colonne-fichier {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  word-break: break-all;
+}
+
+.tableau-defilant {
+  overflow-x: auto;
+}
+/* Reprend .carte, .bandeau, .bouton, .champ, .tableau et .etiquette,
+   definis dans Marques.css (lui-meme fonde sur TableauDeBord.css). */
+
+
+/* --------------------------------------------------------------------------
+   Formulaire article
+   -------------------------------------------------------------------------- */
+
+.carte--formulaire {
+  border-left: 3px solid var(--brand-blue);
+}
+
+.grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.grille--pictos {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.champ--large {
+  grid-column: 1 / -1;
+}
+
+.champ select {
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+  font-size: var(--text-sm);
+  background: var(--surface-sunken);
+  width: 100%;
+}
+
+.champ select:focus,
+.champ input:focus {
+  border-color: var(--brand-blue);
+  background: var(--surface);
+  outline: none;
+}
+
+.champ__aide {
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--ink-faint);
+  margin-top: var(--space-2);
+}
+
+.champ__aide--alerte {
+  color: var(--warn);
+}
+
+.sous-titre {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+  margin: var(--space-6) 0 var(--space-2);
+}
+
+.options {
+  display: flex;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  margin-top: var(--space-4);
+}
+
+.actions-formulaire {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+
+/* --------------------------------------------------------------------------
+   Filtres
+   -------------------------------------------------------------------------- */
+
+.barre-filtres {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+
+.barre-filtres .recherche {
+  margin-left: 0;
+  flex: 1;
+  min-width: 220px;
+}
+
+.barre-filtres select {
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 7px 11px;
+  font-size: var(--text-sm);
+  background: var(--surface-sunken);
+}
+
+/* --------------------------------------------------------------------------
+   Tableau des articles
+   -------------------------------------------------------------------------- */
+
+.tableau--articles {
+  table-layout: auto;
+}
+
+.tableau--articles tbody th.colonne-code {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-normal);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.tableau--articles tr.est-inactif {
+  opacity: 0.5;
+}
+
+.reference {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+
+.pastilles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pastille {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: var(--weight-semibold);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(242, 183, 5, 0.16);
+  color: var(--brand-yellow-ink);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   Pagination
+   -------------------------------------------------------------------------- */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+
+.pagination__position {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+}
+
+/* --------------------------------------------------------------------------
+   Correcteur orthographique
+   -------------------------------------------------------------------------- */
+.champ__aide--correction {
+  color: #0f7b3f;
+}
+
+.lien-bouton {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--brand-blue);
+  font: inherit;
+  font-weight: var(--weight-bold);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+   Recherche par code
+   -------------------------------------------------------------------------- */
+
+.ligne-ean {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.bandeau--alerte {
+  background: rgba(183, 121, 31, 0.09);
+  border-left: 3px solid var(--warn);
+  color: var(--warn);
+}
+
+/* --------------------------------------------------------------------------
+   Fiche article rappelee
+   -------------------------------------------------------------------------- */
+
+.fiche-article {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  margin-bottom: var(--space-5);
+}
+
+.fiche-article__entete {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--space-3);
+}
+
+.fiche-article__marque {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand-blue);
+}
+
+.fiche-article__designation {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+}
+
+.fiche-article__reference {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+/* --------------------------------------------------------------------------
+   Prix et badges
+   -------------------------------------------------------------------------- */
+
+.grille-prix {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.badges-commerciaux {
+  display: flex;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  padding-bottom: var(--space-2);
+}
+
+/* --------------------------------------------------------------------------
+   Apercu des regles calculees
+   -------------------------------------------------------------------------- */
+
+.apercu-regles {
+  margin-top: var(--space-2);
+}
+
+.regles-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-2);
+}
+
+.regle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line-strong);
+}
+
+.regle.est-active {
+  background: rgba(26, 143, 94, 0.06);
+  border-left-color: var(--ok);
+}
+
+.regle__libelle {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-soft);
+}
+
+.regle__valeur {
+  font-size: var(--text-sm);
+  color: var(--ink-faint);
+}
+
+.regle.est-active .regle__valeur {
+  color: var(--ink);
+  font-weight: var(--weight-semibold);
+}
+
+/* --------------------------------------------------------------------------
+   Tableau des affiches
+   -------------------------------------------------------------------------- */
+
+.colonne-prix {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.colonne-prix--fort {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--brand-blue);
+}
+
+/* --------------------------------------------------------------------------
+   Apercu de l'affiche en cours de saisie
+   -------------------------------------------------------------------------- */
+
+.apercu-affiche {
+  margin: var(--space-5) 0;
+}
+
+.apercu-affiche__feuille {
+  box-shadow: 0 2px 10px rgba(14, 19, 48, 0.18);
+  background: #fff;
+  max-width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   Import d'un fichier de prix
+   -------------------------------------------------------------------------- */
+
+.import-saisie__depart {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.import-saisie__depart .carte__texte {
+  flex: 1 1 380px;
+  margin: 0;
+}
+
+.import-saisie__tableau {
+  max-height: 420px;
+  overflow: auto;
+  margin: var(--space-3) 0 var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.import-saisie__tableau thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+
+.import-saisie__marque {
+  font-weight: var(--weight-semibold);
+}
+
+.import-saisie__ligne--erreur td,
+.import-saisie__ligne--erreur th,
+.import-saisie__ligne--ignore td,
+.import-saisie__ligne--ignore th {
+  color: var(--ink-faint);
+}
+
+.etiquette--alerte {
+  background: rgba(183, 121, 31, 0.12);
+  color: var(--warn);
+}
+
+label.bouton {
+  cursor: pointer;
+}
+
+label.bouton.est-desactive {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* Telephone : champ du code sur toute la largeur, boutons dessous. */
+@media (max-width: 600px) {
+  .ligne-ean {
+    flex-wrap: wrap;
+  }
+
+  .ligne-ean .champ {
+    flex: 1 1 100%;
+  }
+
+  .ligne-ean .bouton {
+    flex: 1 1 0;
+    justify-content: center;
+    min-height: 44px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Correction d'une affiche deja saisie
+   -------------------------------------------------------------------------- */
+.carte--edition {
+  outline: 2px solid #f59e0b;
+  outline-offset: -2px;
+  scroll-margin-top: var(--space-4, 16px);
+}
+
+.tableau tr.est-en-edition > * {
+  background: #fff7e6;
+}
+
+.colonne-actions {
+  white-space: nowrap;
+}
+
+.colonne-actions .bouton + .bouton {
+  margin-left: var(--space-2, 8px);
+}
+
+/* ==========================================================================
+   Complements AFFICHES FOOD
+   ========================================================================== */
+
+.champ__libelle {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.champ__libelle .lien-bouton {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+}
+
+.champ input,
+.champ textarea {
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+  font-size: var(--text-sm);
+  background: var(--surface-sunken);
+  width: 100%;
+}
+
+.champ textarea {
+  resize: vertical;
+  min-height: 68px;
+  line-height: 1.45;
+}
+
+.champ textarea:focus {
+  border-color: var(--brand-blue);
+  background: var(--surface);
+  outline: none;
+}
+
+.texte-arabe {
+  font-family: 'Segoe UI', 'Noto Naskh Arabic', 'IBM Plex Sans Arabic', Tahoma, sans-serif;
+  font-size: 1.05em;
+}
+
+.lien-bouton:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.lien-bouton--discret {
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+  margin-top: var(--space-2);
+}
+
+.bouton--scanner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bouton--accent {
+  background: var(--brand-yellow);
+  color: var(--brand-yellow-ink);
+}
+
+.bouton--accent:hover:not(:disabled) {
+  background: #ffd84a;
+}
+
+.modale {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgba(14, 19, 48, 0.55);
+}
+
+.modale__carte {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  padding: var(--space-6);
+}
+
+.modale__carte--large {
+  width: min(980px, 100%);
+}
+
+.modale__titre {
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-4);
+}
+
+.nuancier {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.nuancier input[type='color'] {
+  width: 38px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: none;
+}
+
+.nuancier code {
+  font-size: var(--text-xs);
+}
