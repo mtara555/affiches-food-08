@@ -9,7 +9,6 @@
  */
 
 import {
-  addDoc,
   collection,
   getDocs,
   limit,
@@ -19,6 +18,7 @@ import {
   Timestamp,
   where,
 } from 'firebase/firestore';
+import { ajouter } from './ecriture';
 import { db, COLLECTIONS } from './firebase';
 
 export type ActionJournal = 'creation' | 'modification' | 'suppression' | 'export' | 'connexion';
@@ -107,7 +107,7 @@ function decrireAppareil(): string {
 export async function journaliser(action: ActionJournal, ressource: RessourceJournal, detail: string): Promise<void> {
   if (!auteur) return;
   try {
-    await addDoc(collection(db, COLLECTIONS.JOURNAL), {
+    await ajouter(collection(db, COLLECTIONS.JOURNAL), {
       date: serverTimestamp(),
       action,
       ressource,

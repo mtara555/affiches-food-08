@@ -6,7 +6,8 @@
  * est utilisable des la premiere connexion.
  */
 
-import { collection, deleteDoc, doc, getDocs, limit, query, setDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, limit, query } from 'firebase/firestore';
+import { ecrire, supprimer } from './ecriture';
 import { db, COLLECTIONS } from './firebase';
 import type { GabaritA7, GabaritAffiche, GabaritBalisage, Picto } from './types';
 import { GABARITS_A7 } from '../config/constants';
@@ -82,17 +83,17 @@ function sansId<T extends { id: string }>(g: T): Omit<T, 'id'> {
   return reste;
 }
 
-export const enregistrerGabaritA7 = (g: GabaritA7) => setDoc(doc(db, COLLECTIONS.GABARITS_A7, g.id), sansId(g));
+export const enregistrerGabaritA7 = (g: GabaritA7) => ecrire(doc(db, COLLECTIONS.GABARITS_A7, g.id), sansId(g));
 export const enregistrerGabaritAffiche = (g: GabaritAffiche) =>
-  setDoc(doc(db, COLLECTIONS.GABARITS_AFFICHE, g.id), sansId(g));
+  ecrire(doc(db, COLLECTIONS.GABARITS_AFFICHE, g.id), sansId(g));
 export const enregistrerGabaritBalisage = (g: GabaritBalisage) =>
-  setDoc(doc(db, COLLECTIONS.GABARITS_BALISAGE, g.id), sansId(g));
-export const enregistrerPicto = (p: Picto) => setDoc(doc(db, COLLECTIONS.PICTOS, p.id), sansId(p));
+  ecrire(doc(db, COLLECTIONS.GABARITS_BALISAGE, g.id), sansId(g));
+export const enregistrerPicto = (p: Picto) => ecrire(doc(db, COLLECTIONS.PICTOS, p.id), sansId(p));
 
-export const supprimerGabaritA7 = (id: string) => deleteDoc(doc(db, COLLECTIONS.GABARITS_A7, id));
-export const supprimerGabaritAffiche = (id: string) => deleteDoc(doc(db, COLLECTIONS.GABARITS_AFFICHE, id));
-export const supprimerGabaritBalisage = (id: string) => deleteDoc(doc(db, COLLECTIONS.GABARITS_BALISAGE, id));
-export const supprimerPicto = (id: string) => deleteDoc(doc(db, COLLECTIONS.PICTOS, id));
+export const supprimerGabaritA7 = (id: string) => supprimer(doc(db, COLLECTIONS.GABARITS_A7, id));
+export const supprimerGabaritAffiche = (id: string) => supprimer(doc(db, COLLECTIONS.GABARITS_AFFICHE, id));
+export const supprimerGabaritBalisage = (id: string) => supprimer(doc(db, COLLECTIONS.GABARITS_BALISAGE, id));
+export const supprimerPicto = (id: string) => supprimer(doc(db, COLLECTIONS.PICTOS, id));
 
 /** Identifiant de document sur a partir d'un nom (« Promo Été » -> « PROMO_ETE »). */
 export function identifiantDepuisNom(nom: string): string {

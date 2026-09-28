@@ -3,7 +3,8 @@
  * et reglages IA (document `parametres/ia`, lisible par tout utilisateur actif).
  */
 
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
+import { ecrire } from './ecriture';
 import { db, COLLECTIONS } from './firebase';
 import type { CouleursA7, Parametres, RegleMapping } from './types';
 import { COULEURS_BALISAGE_DEFAUT } from '../rendu/balisage';
@@ -67,7 +68,7 @@ export async function chargerParametres(): Promise<Parametres> {
 }
 
 export async function enregistrerParametres(p: Parametres): Promise<void> {
-  await setDoc(refGeneral(), p);
+  await ecrire(refGeneral(), p);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -92,5 +93,5 @@ export async function chargerReglagesIa(): Promise<ReglagesIa> {
 }
 
 export async function enregistrerReglagesIa(r: ReglagesIa): Promise<void> {
-  await setDoc(refIa(), r);
+  await ecrire(refIa(), { ...r });
 }

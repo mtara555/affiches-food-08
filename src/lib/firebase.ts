@@ -44,6 +44,7 @@ export const auth = getAuth(app);
 function creerFirestore(): Firestore {
   return initializeFirestore(app, {
     localCache: memoryLocalCache(),
+    ignoreUndefinedProperties: true,
     experimentalAutoDetectLongPolling: true,
   });
 }
