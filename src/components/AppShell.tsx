@@ -57,7 +57,6 @@ const NAVIGATION: readonly EntreeNavigation[] = [
   },
   {
     to: '/catalogue',
-    aVenir: true,
     libelle: 'Catalogue articles',
     icone: (
       <Icone>
@@ -105,7 +104,6 @@ const NAVIGATION: readonly EntreeNavigation[] = [
   },
   {
     to: '/parametres',
-    aVenir: true,
     libelle: 'Parametres',
     reserveAdmin: true,
     icone: (

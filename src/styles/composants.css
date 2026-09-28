@@ -1136,3 +1136,8 @@ label.bouton.est-desactive {
 .nuancier code {
   font-size: var(--text-xs);
 }
+
+.pastille.pastille--allergene {
+  background: rgba(200, 16, 46, 0.1);
+  color: var(--danger);
+}

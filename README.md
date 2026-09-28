@@ -6,8 +6,8 @@ React + TypeScript + Vite, PWA sur GitHub Pages, données partagées sur Firebas
 | Étape | Contenu | État |
 |---|---|---|
 | 0 | Nouveau dépôt : structure React / Vite, déploiement automatique GitHub Pages | ✅ Terminé |
-| 1 | Firebase : connexion, rôles, premier administrateur | ⏳ En cours |
-| 2 | Catalogue articles + reprise des données de l'ancienne application | À venir |
+| 1 | Firebase : connexion, rôles, premier administrateur | ✅ Terminé |
+| 2 | Catalogue articles + reprise des données de l'ancienne application | ⏳ En cours |
 | 3 | Gabarits A7 / affiches / balisage, pictos | À venir |
 | 4 | Campagnes, saisie et impression A7 | À venir |
 | 5 | Affiches promo A3 / A4 / A5 | À venir |
