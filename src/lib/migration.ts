@@ -102,81 +102,146 @@ export async function lireSauvegarde(fichier: File): Promise<{ donnees: Ancienne
   };
 }
 
+/** Rejette si une ecriture reste bloquee (reseau coupe, onglet en veille…). */
+function avecDelai<T>(promesse: Promise<T>, libelle: string, ms = 60_000): Promise<T> {
+  return new Promise<T>((resoudre, rejeter) => {
+    const t = window.setTimeout(
+      () => rejeter(new Error(`${libelle} : pas de reponse du serveur apres ${ms / 1000} s (reseau ?).`)),
+      ms,
+    );
+    promesse.then(
+      (v) => {
+        window.clearTimeout(t);
+        resoudre(v);
+      },
+      (e: unknown) => {
+        window.clearTimeout(t);
+        rejeter(e);
+      },
+    );
+  });
+}
+
+export interface OptionsReprise {
+  /** Reprendre la base articles (64 ecritures). */
+  readonly articles: boolean;
+  /** Reprendre gabarits, pictos, parametres et cle IA. */
+  readonly reglages: boolean;
+}
+
+export interface RapportReprise {
+  readonly articles: number;
+  readonly elements: number;
+  readonly avertissements: string[];
+}
+
 export async function reprendre(
   d: AncienneSauvegarde,
   auteur: string,
   etape: (texte: string) => void,
-): Promise<void> {
+  options: OptionsReprise = { articles: true, reglages: true },
+): Promise<RapportReprise> {
   const a7 = d.a7 ?? {};
+  const avertissements: string[] = [];
+  let nbArticles = 0;
+  let nbElements = 0;
+
+  /** Execute une etape ; en cas d'echec, note l'avertissement et continue. */
+  const essayer = async (libelle: string, action: () => Promise<void>) => {
+    try {
+      await action();
+      nbElements++;
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      // Serveur muet : inutile d'enchainer les autres ecritures (elles attendraient aussi).
+      if (/pas de reponse du serveur/.test(message)) throw new Error(`${message} Reprise interrompue : verifiez le reseau puis relancez (sans les articles).`);
+      avertissements.push(`${libelle} : ${message}`);
+    }
+  };
 
   /* --- Articles --- */
-  const imposes = a7.productTpl ?? {};
-  const articles: ArticleSaisi[] = (a7.base ?? [])
-    .filter((a) => String(a.code ?? '').trim())
-    .map((a) => {
-      const code = String(a.code).trim();
-      return {
-        code,
-        designationFr: a.designation_fr ?? '',
-        designationAr: a.designation_ar ?? '',
-        ingredientsFr: a.ingredients_fr ?? '',
-        ingredientsAr: a.ingredients_ar ?? '',
-        origine: a.origine ?? '',
-        colJ: a.col_j ?? '',
-        gabaritA7: imposes[code] ?? a.col_h ?? '',
-      };
-    });
-  if (articles.length) {
-    await importerArticles(articles, auteur, (f, t) => etape(`Articles : ${f} / ${t}`));
+  if (options.articles) {
+    const imposes = a7.productTpl ?? {};
+    const articles: ArticleSaisi[] = (a7.base ?? [])
+      .filter((a) => String(a.code ?? '').trim())
+      .map((a) => {
+        const code = String(a.code).trim();
+        return {
+          code,
+          designationFr: a.designation_fr ?? '',
+          designationAr: a.designation_ar ?? '',
+          ingredientsFr: a.ingredients_fr ?? '',
+          ingredientsAr: a.ingredients_ar ?? '',
+          origine: a.origine ?? '',
+          colJ: a.col_j ?? '',
+          gabaritA7: imposes[code] ?? a.col_h ?? '',
+        };
+      });
+    if (articles.length) {
+      etape(`Articles : 0 / ${articles.length}`);
+      // Pas de delai global : 64 transactions, chacune suivie.
+      nbArticles = await importerArticles(articles, auteur, (f, t) => etape(`Articles : ${f} / ${t}`));
+    }
   }
+
+  if (!options.reglages) return { articles: nbArticles, elements: nbElements, avertissements };
 
   /* --- Gabarits A7 (fond + mise en page) --- */
   const defauts = new Map(gabaritsA7ParDefaut().map((g) => [g.id, g]));
-  const ids = new Set([...Object.keys(a7.templates ?? {}), ...Object.keys(a7.tplLayout ?? {})]);
-  let n = 0;
-  for (const id of ids) {
-    n++;
-    etape(`Gabarits A7 : ${n} / ${ids.size} (${id})`);
-    const source = a7.templates?.[id];
-    const base: GabaritA7 = defauts.get(id) ?? { id, nom: id, image: null, layout: {}, ordre: 100 + n };
-    await enregistrerGabaritA7({
-      ...base,
-      image: source ? await recompresserDataUrl(source, 1600) : null,
-      layout: { ...(a7.tplLayout?.[id] ?? {}) },
+  const ids = [...new Set([...Object.keys(a7.templates ?? {}), ...Object.keys(a7.tplLayout ?? {})])];
+  for (let n = 0; n < ids.length; n++) {
+    const id = ids[n] as string;
+    await essayer(`Gabarit A7 ${id}`, async () => {
+      const source = a7.templates?.[id];
+      const base: GabaritA7 = defauts.get(id) ?? { id, nom: id, image: null, layout: {}, ordre: 100 + n };
+      etape(`Gabarits A7 : ${n + 1} / ${ids.length} (${id}) — image`);
+      const image = source ? await recompresserDataUrl(source, 1600) : null;
+      etape(`Gabarits A7 : ${n + 1} / ${ids.length} (${id}) — enregistrement`);
+      await avecDelai(
+        enregistrerGabaritA7({ ...base, image, layout: JSON.parse(JSON.stringify(a7.tplLayout?.[id] ?? {})) as LayoutA7 }),
+        `Gabarit A7 ${id}`,
+      );
     });
   }
 
   /* --- Parametres (mapping + couleurs) --- */
-  etape('Parametres…');
-  const actuels = await chargerParametres();
-  const mapping: RegleMapping[] | undefined = a7.mapping
-    ?.filter((m) => m.prefix && m.template)
-    .map((m) => ({ prefixe: String(m.prefix), gabarit: String(m.template), libelle: m.label ?? '' }));
-  const nouveaux: Parametres = {
-    ...actuels,
-    mapping: mapping?.length ? mapping : actuels.mapping,
-    couleursA7: { ...actuels.couleursA7, ...(a7.textColors ?? {}) },
-    couleursBalisage: { ...actuels.couleursBalisage, ...(d.balisage?.textColors ?? {}) },
-  };
-  await enregistrerParametres(nouveaux);
+  await essayer('Parametres', async () => {
+    etape('Parametres…');
+    const actuels = await chargerParametres();
+    const mapping: RegleMapping[] | undefined = a7.mapping
+      ?.filter((m) => m.prefix && m.template)
+      .map((m) => ({ prefixe: String(m.prefix), gabarit: String(m.template), libelle: m.label ?? '' }));
+    const nouveaux: Parametres = {
+      ...actuels,
+      mapping: mapping?.length ? mapping : actuels.mapping,
+      couleursA7: { ...actuels.couleursA7, ...(a7.textColors ?? {}) },
+      couleursBalisage: { ...actuels.couleursBalisage, ...(d.balisage?.textColors ?? {}) },
+    };
+    await avecDelai(enregistrerParametres(nouveaux), 'Parametres');
+  });
 
   /* --- Gabarits d'affiche A4 --- */
   const tpls = d.a4?.tpls ?? [];
   for (let i = 0; i < tpls.length; i++) {
     const t = tpls[i];
     if (!t) continue;
-    etape(`Gabarits affiche : ${i + 1} / ${tpls.length}`);
-    const g: GabaritAffiche = {
-      id: identifiantDepuisNom(t.id || t.name || `A4_${i}`),
-      nom: t.name || t.id || `Gabarit ${i + 1}`,
-      bg: t.bg || '#991b1b',
-      bg2: t.bg2 || '#7f1d1d',
-      image: t.bgImg ? await recompresserDataUrl(t.bgImg, 1754) : null,
-      logo: Boolean(t.logo),
-      els: (t.els ?? {}) as GabaritAffiche['els'],
-      ordre: i + 1,
-    };
-    await enregistrerGabaritAffiche(g);
+    const nom = t.name || t.id || `Gabarit ${i + 1}`;
+    await essayer(`Gabarit affiche ${nom}`, async () => {
+      etape(`Gabarits affiche : ${i + 1} / ${tpls.length} (${nom}) — image`);
+      const image = t.bgImg ? await recompresserDataUrl(t.bgImg, 1754) : null;
+      const g: GabaritAffiche = {
+        id: identifiantDepuisNom(t.id || t.name || `A4_${i}`),
+        nom,
+        bg: t.bg || '#991b1b',
+        bg2: t.bg2 || '#7f1d1d',
+        image,
+        logo: Boolean(t.logo),
+        els: JSON.parse(JSON.stringify(t.els ?? {})) as GabaritAffiche['els'],
+        ordre: i + 1,
+      };
+      etape(`Gabarits affiche : ${i + 1} / ${tpls.length} (${nom}) — enregistrement`);
+      await avecDelai(enregistrerGabaritAffiche(g), `Gabarit affiche ${nom}`);
+    });
   }
 
   /* --- Pictos --- */
@@ -184,12 +249,17 @@ export async function reprendre(
   for (let i = 0; i < pictos.length; i++) {
     const p = pictos[i];
     if (!p?.dataUrl) continue;
-    etape(`Pictos : ${i + 1} / ${pictos.length}`);
-    // L'identifiant d'origine est garde : les affiches importees y font reference.
-    await enregistrerPicto({
-      id: identifiantDepuisNom(p.id || p.name || `PICTO_${i}`),
-      nom: p.name || `Picto ${i + 1}`,
-      image: await recompresserDataUrl(p.dataUrl, 600, true),
+    const dataUrl = p.dataUrl;
+    await essayer(`Picto ${p.name ?? i + 1}`, async () => {
+      etape(`Pictos : ${i + 1} / ${pictos.length}`);
+      await avecDelai(
+        enregistrerPicto({
+          id: identifiantDepuisNom(p.id || p.name || `PICTO_${i}`),
+          nom: p.name || `Picto ${i + 1}`,
+          image: await recompresserDataUrl(dataUrl, 600, true),
+        }),
+        `Picto ${p.name ?? i + 1}`,
+      );
     });
   }
 
@@ -199,21 +269,32 @@ export async function reprendre(
   for (let i = 0; i < bal.length; i++) {
     const t = bal[i];
     if (!t?.id) continue;
-    etape(`Gabarits balisage : ${i + 1} / ${bal.length}`);
-    const base = defautsBalisage.get(t.id);
-    await enregistrerGabaritBalisage({
-      id: identifiantDepuisNom(t.id),
-      nom: base?.nom ?? t.name ?? t.id,
-      image: t.img ? await recompresserDataUrl(t.img, 1800) : null,
-      axes: t.axes ?? {},
-      libelleDroit: base?.libelleDroit ?? 'Allergènes',
-      ordre: base?.ordre ?? 10 + i,
+    const id = t.id;
+    await essayer(`Balisage ${id}`, async () => {
+      etape(`Gabarits balisage : ${i + 1} / ${bal.length} (${id})`);
+      const base = defautsBalisage.get(id);
+      await avecDelai(
+        enregistrerGabaritBalisage({
+          id: identifiantDepuisNom(id),
+          nom: base?.nom ?? t.name ?? id,
+          image: t.img ? await recompresserDataUrl(t.img, 1800) : null,
+          axes: JSON.parse(JSON.stringify(t.axes ?? {})) as GabaritBalisage['axes'],
+          libelleDroit: base?.libelleDroit ?? 'Allergènes',
+          ordre: base?.ordre ?? 10 + i,
+        }),
+        `Balisage ${id}`,
+      );
     });
   }
 
   /* --- Cle IA --- */
   if (d.config?.groqKey) {
-    etape('Cle de traduction IA…');
-    await enregistrerReglagesIa({ cleGroq: d.config.groqKey, modele: MODELE_IA_DEFAUT });
+    const cle = d.config.groqKey;
+    await essayer('Cle IA', async () => {
+      etape('Cle de traduction IA…');
+      await avecDelai(enregistrerReglagesIa({ cleGroq: cle, modele: MODELE_IA_DEFAUT }), 'Cle IA');
+    });
   }
+
+  return { articles: nbArticles, elements: nbElements, avertissements };
 }

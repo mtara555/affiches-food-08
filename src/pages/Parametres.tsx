@@ -13,7 +13,7 @@ import {
   type ReglagesIa,
 } from '../lib/parametres';
 import { oublierReglagesIa, traduireEnArabe } from '../lib/traduction';
-import { lireSauvegarde, reprendre, type ResumeSauvegarde } from '../lib/migration';
+import { lireSauvegarde, reprendre, type RapportReprise, type ResumeSauvegarde } from '../lib/migration';
 import type { CouleursA7, CouleursBalisage, Parametres as TypeParametres } from '../lib/types';
 import { messageErreur } from '../lib/firebase';
 import { tracer } from '../lib/journal';
@@ -45,6 +45,9 @@ export function Parametres() {
   const [envoi, setEnvoi] = useState(false);
   const [sauvegarde, setSauvegarde] = useState<{ fichier: File; resume: ResumeSauvegarde; donnees: Parameters<typeof reprendre>[0] } | null>(null);
   const [etape, setEtape] = useState<string | null>(null);
+  const [repArticles, setRepArticles] = useState(true);
+  const [repReglages, setRepReglages] = useState(true);
+  const [rapport, setRapport] = useState<RapportReprise | null>(null);
 
   useEffect(() => setP(parametres), [parametres]);
   useEffect(() => {
@@ -90,15 +93,18 @@ export function Parametres() {
 
   async function lancerReprise() {
     if (!sauvegarde || !utilisateur) return;
+    if (!repArticles && !repReglages) return;
     if (!window.confirm('Reprendre les donnees ? Les articles de meme code et les gabarits de meme nom seront remplaces.')) return;
+    setRapport(null);
     try {
-      await reprendre(sauvegarde.donnees, utilisateur.nom, setEtape);
-      tracer('creation', 'parametres', `Reprise de l'ancienne application (${sauvegarde.fichier.name} : ${sauvegarde.resume.articles} articles)`);
-      notifier('Reprise terminee.');
-      setSauvegarde(null);
+      const r = await reprendre(sauvegarde.donnees, utilisateur.nom, setEtape, { articles: repArticles, reglages: repReglages });
+      setRapport(r);
+      tracer('creation', 'parametres', `Reprise de l'ancienne application (${sauvegarde.fichier.name} : ${r.articles} articles, ${r.elements} reglages, ${r.avertissements.length} avertissement(s))`);
+      notifier(r.avertissements.length ? 'Reprise terminee avec des avertissements.' : 'Reprise terminee.', r.avertissements.length ? 'info' : 'succes');
       await recharger();
     } catch (e) {
       notifier(messageErreur(e), 'erreur');
+      setRapport({ articles: 0, elements: 0, avertissements: [messageErreur(e)] });
     } finally {
       setEtape(null);
     }
@@ -268,12 +274,33 @@ export function Parametres() {
               <li>{sauvegarde.resume.gabaritsBalisage} gabarit(s) de balisage</li>
               <li>Cle IA : {sauvegarde.resume.cleIa ? 'oui' : 'non'}</li>
             </ul>
+            <div className="options">
+              <label className="case">
+                <input type="checkbox" checked={repArticles} disabled={Boolean(etape)} onChange={(e) => setRepArticles(e.target.checked)} />
+                Articles ({sauvegarde.resume.articles})
+              </label>
+              <label className="case">
+                <input type="checkbox" checked={repReglages} disabled={Boolean(etape)} onChange={(e) => setRepReglages(e.target.checked)} />
+                Gabarits, pictos, parametres et cle IA
+              </label>
+            </div>
+            {etape ? <p className="bandeau bandeau--alerte" style={{ marginTop: 12 }}>Reprise en cours — gardez cet onglet ouvert et au premier plan.</p> : null}
             <div className="actions-formulaire">
-              <button type="button" className="bouton bouton--principal" disabled={Boolean(etape)} onClick={() => void lancerReprise()}>
+              <button type="button" className="bouton bouton--principal" disabled={Boolean(etape) || (!repArticles && !repReglages)} onClick={() => void lancerReprise()}>
                 {etape ?? 'Lancer la reprise'}
               </button>
-              <button type="button" className="bouton bouton--discret" disabled={Boolean(etape)} onClick={() => setSauvegarde(null)}>Annuler</button>
+              <button type="button" className="bouton bouton--discret" disabled={Boolean(etape)} onClick={() => { setSauvegarde(null); setRapport(null); }}>Annuler</button>
             </div>
+            {rapport ? (
+              <div className={`bandeau ${rapport.avertissements.length ? 'bandeau--alerte' : 'bandeau--succes'}`} style={{ marginTop: 12 }}>
+                <strong>Resultat :</strong> {rapport.articles.toLocaleString('fr-FR')} article(s), {rapport.elements} reglage(s) repris.
+                {rapport.avertissements.length ? (
+                  <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                    {rapport.avertissements.map((a, i) => <li key={i}>{a}</li>)}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
           </>
         ) : null}
       </section>

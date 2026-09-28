@@ -20,15 +20,19 @@ function chargerImg(src: string): Promise<HTMLImageElement> {
     const img = new Image();
     img.onload = () => resoudre(img);
     img.onerror = () => rejeter(new Error("Ce fichier n'est pas une image lisible."));
+    // Securite : une image qui ne se decode jamais ne bloque pas l'ecran.
+    window.setTimeout(() => rejeter(new Error('Image trop longue a decoder.')), 20_000);
     img.src = src;
   });
 }
 
-/** Recompresse une image deja en data URL (reprise des anciennes donnees). */
+/**
+ * Reprise des anciennes donnees : une image deja assez legere est gardee telle
+ * quelle (PNG compris, sans perte) ; sinon elle est recompressee.
+ */
 export async function recompresserDataUrl(source: string, coteMax = 1600, transparence = false): Promise<string> {
-  if (source.length <= LIMITE_OCTETS && (transparence || source.startsWith('data:image/jpeg'))) return source;
-  const blob = await (await fetch(source)).blob();
-  return compresserImage(new File([blob], 'image', { type: blob.type }), coteMax, transparence);
+  if (source.length <= LIMITE_OCTETS) return source;
+  return compresserSource(source, coteMax, transparence);
 }
 
 /**
@@ -37,7 +41,10 @@ export async function recompresserDataUrl(source: string, coteMax = 1600, transp
  * @param transparence garder le PNG (pictos detoures)
  */
 export async function compresserImage(fichier: File, coteMax = 1600, transparence = false): Promise<string> {
-  const source = await lireFichier(fichier);
+  return compresserSource(await lireFichier(fichier), coteMax, transparence);
+}
+
+async function compresserSource(source: string, coteMax: number, transparence: boolean): Promise<string> {
   const img = await chargerImg(source);
   let cote = coteMax;
   for (let essai = 0; essai < 8; essai++) {
