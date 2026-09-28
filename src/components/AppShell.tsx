@@ -67,7 +67,6 @@ const NAVIGATION: readonly EntreeNavigation[] = [
   },
   {
     to: '/gabarits',
-    aVenir: true,
     libelle: 'Gabarits & pictos',
     reserveAdmin: true,
     icone: (

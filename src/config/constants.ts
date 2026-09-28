@@ -8,7 +8,7 @@
  */
 
 export const APP_NAME = 'AFFICHES FOOD';
-export const APP_VERSION = '3.0.1';
+export const APP_VERSION = '3.1.0';
 export const APP_FULL_NAME = `${APP_NAME} v${APP_VERSION}`;
 export const MAGASIN = 'Marjane Tanger Medina 08';
 

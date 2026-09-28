@@ -154,6 +154,9 @@ export async function reprendre(
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       // Serveur muet : inutile d'enchainer les autres ecritures (elles attendraient aussi).
+      if (/quota|resource-exhausted/i.test(message) || (e as { code?: string })?.code === 'resource-exhausted') {
+        throw new Error('Quota gratuit Firebase du jour atteint. Relancez la reprise demain matin (remise a zero vers 8 h, heure du Maroc).');
+      }
       if (/pas de reponse du serveur/.test(message)) throw new Error(`${message} Reprise interrompue : verifiez le reseau puis relancez (sans les articles).`);
       avertissements.push(`${libelle} : ${message}`);
     }

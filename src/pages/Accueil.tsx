@@ -16,8 +16,8 @@ type Etat = 'fait' | 'en-cours' | 'a-venir';
 const ETAPES: readonly { code: string; libelle: string; etat: Etat }[] = [
   { code: '0', libelle: 'Nouveau depot : structure React / Vite et deploiement automatique GitHub Pages', etat: 'fait' },
   { code: '1', libelle: 'Firebase : projet, connexion, roles, premier administrateur', etat: 'fait' },
-  { code: '2', libelle: 'Catalogue articles partage + reprise des donnees de l’ancienne application', etat: 'en-cours' },
-  { code: '3', libelle: 'Gabarits A7, affiches, balisage et bibliotheque de pictos', etat: 'a-venir' },
+  { code: '2', libelle: 'Catalogue articles partage + reprise des donnees de l’ancienne application', etat: 'fait' },
+  { code: '3', libelle: 'Gabarits A7, affiches, balisage et bibliotheque de pictos', etat: 'en-cours' },
   { code: '4', libelle: 'Campagnes, saisie et impression des etiquettes A7', etat: 'a-venir' },
   { code: '5', libelle: 'Affiches promo A3 / A4 / A5', etat: 'a-venir' },
   { code: '6', libelle: 'Balisage BOUL / PAT', etat: 'a-venir' },
