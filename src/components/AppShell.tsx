@@ -77,7 +77,6 @@ const NAVIGATION: readonly EntreeNavigation[] = [
   },
   {
     to: '/utilisateurs',
-    aVenir: true,
     libelle: 'Utilisateurs',
     reserveAdmin: true,
     icone: (
@@ -90,7 +89,6 @@ const NAVIGATION: readonly EntreeNavigation[] = [
   },
   {
     to: '/journal',
-    aVenir: true,
     libelle: 'Journal',
     reserveAdmin: true,
     icone: (
