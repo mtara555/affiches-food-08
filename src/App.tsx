@@ -11,6 +11,9 @@ import { MonCompte } from './pages/MonCompte';
 import { Catalogue } from './pages/Catalogue';
 import { Parametres } from './pages/Parametres';
 import { Gabarits } from './pages/Gabarits';
+import { Campagnes } from './pages/Campagnes';
+import { Saisie } from './pages/Saisie';
+import { Impression } from './pages/Impression';
 
 function Protege({ children, admin }: { children: ReactNode; admin?: boolean }) {
   return <RouteProtegee roles={admin ? ['administrateur'] : undefined}>{children}</RouteProtegee>;
@@ -23,6 +26,10 @@ export function App() {
         <Routes>
           <Route path="/connexion" element={<Connexion />} />
           <Route path="/" element={<Protege><Accueil /></Protege>} />
+          <Route path="/campagnes" element={<Protege><Campagnes /></Protege>} />
+          <Route path="/saisie/:campagneId" element={<Protege><Saisie /></Protege>} />
+          <Route path="/impression/:campagneId" element={<Protege><Impression /></Protege>} />
+          <Route path="/saisie" element={<Navigate to="/campagnes" replace />} />
           <Route path="/catalogue" element={<Protege><Catalogue /></Protege>} />
           <Route path="/gabarits" element={<Protege admin><Gabarits /></Protege>} />
           <Route path="/parametres" element={<Protege admin><Parametres /></Protege>} />

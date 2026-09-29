@@ -45,7 +45,6 @@ const NAVIGATION: readonly EntreeNavigation[] = [
   },
   {
     to: '/campagnes',
-    aVenir: true,
     libelle: 'Campagnes',
     icone: (
       <Icone>
