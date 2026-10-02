@@ -57,7 +57,10 @@ export function estAllergeneFr(mot: string): boolean {
 export function estAllergeneAr(mot: string): boolean {
   const w = mot.trim();
   if (w.length < 2) return false;
-  return ALLERGENES_AR.some((a) => w === a || w.includes(a));
+
+  return ALLERGENES_AR.some((a) =>
+    w === a || w.includes(a) || a.includes(w)
+  );
 }
 
 /** Liste des allergenes trouves dans une liste d'ingredients (pour affichage). */
