@@ -7,7 +7,7 @@
  * « (LAIT), » -> « ( » normal, « LAIT » rouge, « ), » normal.
  */
 
-import { estAllergeneAr, estAllergeneFr } from './allergenes';
+import { estAllergeneAr, marquerAllergenesFr } from './allergenes';
 
 interface Segment {
   readonly t: string;
@@ -31,21 +31,30 @@ export interface StyleTexte {
 
 const police = (s: StyleTexte, gras: boolean) => `${gras ? 'bold' : s.poidsNormal} ${s.taille}px ${s.famille}`;
 
+const RE_LETTRES = /[A-Za-zÀ-ÿŒœ]/;
+
 function mesurerMotsFr(ctx: CanvasRenderingContext2D, texte: string, s: StyleTexte): Mot[] {
-  return texte
+  // 1) Decoupage en mots puis en segments (lettres / ponctuation).
+  const motsBruts: string[][] = texte
     .split(/\s+/)
     .filter(Boolean)
-    .map((mot) => {
-      const segments = mot
-        .split(/([^A-Za-zÀ-ÖØ-öø-ÿŒœ]+)/)
-        .filter(Boolean)
-        .map((t) => {
-          const alg = /[A-Za-zÀ-ÿŒœ]/.test(t) && estAllergeneFr(t);
-          ctx.font = police(s, alg);
-          return { t, alg, w: ctx.measureText(t).width };
-        });
-      return { segments, w: segments.reduce((a, b) => a + b.w, 0) };
+    .map((mot) => mot.split(/([^A-Za-zÀ-ÖØ-öø-ÿŒœ]+)/).filter(Boolean));
+
+  // 2) Detection sur tous les segments « lettres » a la suite, pour gerer
+  //    les termes composes (« CREME FRAICHE » -> les 2 mots en rouge).
+  const lettres = motsBruts.flat().filter((t) => RE_LETTRES.test(t));
+  const flags = marquerAllergenesFr(lettres);
+
+  // 3) Mesure avec la police adaptee (gras si allergene).
+  let n = 0;
+  return motsBruts.map((segsBruts) => {
+    const segments = segsBruts.map((t) => {
+      const alg = RE_LETTRES.test(t) ? (flags[n++] ?? false) : false;
+      ctx.font = police(s, alg);
+      return { t, alg, w: ctx.measureText(t).width };
     });
+    return { segments, w: segments.reduce((a, b) => a + b.w, 0) };
+  });
 }
 
 function mesurerMotsAr(ctx: CanvasRenderingContext2D, texte: string, s: StyleTexte): Mot[] {
