@@ -50,8 +50,10 @@ function mesurerMotsFr(ctx: CanvasRenderingContext2D, texte: string, s: StyleTex
   return motsBruts.map((segsBruts) => {
     const segments = segsBruts.map((t) => {
       const alg = RE_LETTRES.test(t) ? (flags[n++] ?? false) : false;
+      // Allergenes en MAJUSCULES, le reste en minuscules.
+      const texteAffiche = alg ? t.toUpperCase() : t.toLowerCase();
       ctx.font = police(s, alg);
-      return { t, alg, w: ctx.measureText(t).width };
+      return { t: texteAffiche, alg, w: ctx.measureText(texteAffiche).width };
     });
     return { segments, w: segments.reduce((a, b) => a + b.w, 0) };
   });
