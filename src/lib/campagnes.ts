@@ -26,7 +26,7 @@ import {
 import { db, COLLECTIONS } from './firebase';
 import { ajouter, executerLot, modifier, supprimer, type Operation } from './ecriture';
 import type { Campagne, Element, SaisieElement } from './types';
-import type { FormatAffiche, TypeCampagne } from '../config/constants';
+import { VRAC_DEFAUT, type FormatAffiche, type ParametresVrac, type TypeCampagne } from '../config/constants';
 
 const colCampagnes = () => collection(db, COLLECTIONS.CAMPAGNES);
 const colElements = (campagneId: string) => collection(db, COLLECTIONS.CAMPAGNES, campagneId, COLLECTIONS.ELEMENTS);
@@ -40,6 +40,9 @@ function versCampagne(s: DocumentSnapshot): Campagne {
     nom: String(d.nom ?? ''),
     type: (d.type as TypeCampagne) ?? 'A7',
     format: (d.format as FormatAffiche) ?? 'A4',
+    largeurMm: Number(d.largeurMm) > 0 ? Number(d.largeurMm) : VRAC_DEFAUT.largeurMm,
+    hauteurMm: Number(d.hauteurMm) > 0 ? Number(d.hauteurMm) : VRAC_DEFAUT.hauteurMm,
+    avecIngredients: d.avecIngredients !== false,
     statut: (d.statut as Campagne['statut']) ?? 'brouillon',
     nbElements: Number(d.nbElements ?? 0),
     creeLe: date(d.creeLe),
@@ -59,16 +62,23 @@ export async function obtenirCampagne(id: string): Promise<Campagne | null> {
   return s.exists() ? versCampagne(s) : null;
 }
 
+/** Reglages « Vrac » d'une campagne (undefined pour les autres types). */
+export function reglagesVrac(c: Pick<Campagne, 'type' | 'largeurMm' | 'hauteurMm' | 'avecIngredients'>): ParametresVrac | undefined {
+  return c.type === 'VRAC' ? { largeurMm: c.largeurMm, hauteurMm: c.hauteurMm, avecIngredients: c.avecIngredients } : undefined;
+}
+
 export async function creerCampagne(
   nom: string,
   type: TypeCampagne,
   format: FormatAffiche,
   auteur: { id: string; nom: string },
+  vrac?: ParametresVrac,
 ): Promise<string> {
   const ref = await ajouter(colCampagnes(), {
     nom: nom.trim(),
     type,
     format,
+    ...(type === 'VRAC' ? { ...(vrac ?? VRAC_DEFAUT) } : {}),
     statut: 'brouillon',
     nbElements: 0,
     creeLe: serverTimestamp(),
@@ -81,7 +91,7 @@ export async function creerCampagne(
 
 export async function modifierCampagne(
   id: string,
-  champs: Partial<Pick<Campagne, 'nom' | 'format' | 'statut'>>,
+  champs: Partial<Pick<Campagne, 'nom' | 'format' | 'statut' | 'largeurMm' | 'hauteurMm' | 'avecIngredients'>>,
 ): Promise<void> {
   await modifier(doc(colCampagnes(), id), { ...champs, majLe: serverTimestamp() });
 }
@@ -97,7 +107,7 @@ export async function supprimerCampagne(id: string): Promise<void> {
 
 /** Duplique une campagne (nouvelle semaine, memes articles). */
 export async function dupliquerCampagne(source: Campagne, nouveauNom: string, auteur: { id: string; nom: string }): Promise<string> {
-  const id = await creerCampagne(nouveauNom, source.type, source.format, auteur);
+  const id = await creerCampagne(nouveauNom, source.type, source.format, auteur, reglagesVrac(source));
   const elements = await listerElements<Element>(source.id);
   await ajouterElements(id, elements.map(({ id: _i, ordre: _o, ...reste }) => { void _i; void _o; return reste; }), 0);
   return id;

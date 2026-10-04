@@ -29,14 +29,17 @@ interface Props {
   readonly surAjouter: (elements: SaisieElement[]) => Promise<void>;
 }
 
+const COLONNES_A7 = ['Code', 'Prix', 'Unite', 'Gabarit (vide = auto)', 'Poids kg (B_FIL…)', 'Fidelite %'];
 const COLONNES: Readonly<Record<TypeCampagne, string[]>> = {
-  A7: ['Code', 'Prix', 'Unite', 'Gabarit (vide = auto)', 'Poids kg (B_FIL…)', 'Fidelite %'],
+  A7: COLONNES_A7,
+  VRAC: COLONNES_A7,
   AFFICHE: ['Code', 'Prix barre', 'Prix promo', 'Fidelite %', 'Picto (nom)', 'Gabarit (nom)', 'Secteur (FOOD / NONFOOD)'],
   BALISAGE: ['Code', 'Gabarit (BOUL / PAT)', 'Designation FR', 'Designation AR', 'Ingredients FR', 'Ingredients AR'],
 };
 
 const EXEMPLES: Readonly<Record<TypeCampagne, (string | number)[]>> = {
   A7: ['2690012000000', '12,50', 'pièce', '', '', ''],
+  VRAC: ['2690012000000', '12,50', 'kg', '', '', ''],
   AFFICHE: ['6111234567890', '29,90', '19,90', '10', '', 'PROMO ROUGE', 'FOOD'],
   BALISAGE: ['2690012000000', 'BOUL', '', '', '', ''],
 };
@@ -60,7 +63,7 @@ export function ImportSaisie({ type, surAjouter }: Props) {
   function analyserLigne(r: string[], numero: number, articles: Map<string, Article>): LigneAnalysee {
     const code = normaliserCode(r[0] ?? '');
     const a = articles.get(code) ?? null;
-    if (type === 'A7') {
+    if (type === 'A7' || type === 'VRAC') {
       const prix = nombre(r[1]);
       if (!a) return { numero, code, libelle: '', detail: '', saisie: null, probleme: 'Code absent du catalogue' };
       if (!(prix > 0)) return { numero, code, libelle: a.designationFr, detail: '', saisie: null, probleme: 'Prix manquant' };

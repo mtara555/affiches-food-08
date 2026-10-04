@@ -3,7 +3,7 @@
  * campagne selon son type, avec les donnees de reference de la session.
  */
 
-import type { TypeCampagne } from '../config/constants';
+import { VRAC_DEFAUT, type ParametresVrac, type TypeCampagne } from '../config/constants';
 import type {
   Element,
   ElementA7,
@@ -16,7 +16,7 @@ import type {
   Picto,
   Saisie,
 } from '../lib/types';
-import { A7_H, A7_L, dessinerA7, preparerA7 } from './a7';
+import { A7_H, A7_L, dessinerA7, geometrieVrac, preparerA7 } from './a7';
 import { AF_H, AF_L, dessinerAffiche, gabaritsAfficheParDefaut, preparerAffiche } from './affiche';
 import { BA_H, BA_L, dessinerBalisage, preparerBalisage } from './balisage';
 import { chargerPolices } from './commun';
@@ -34,11 +34,31 @@ export const DIMENSIONS: Readonly<Record<TypeCampagne, { l: number; h: number }>
   A7: { l: A7_L, h: A7_H },
   AFFICHE: { l: AF_L, h: AF_H },
   BALISAGE: { l: BA_L, h: BA_H },
+  // Valeur indicative : les dimensions reelles d'une campagne vrac viennent de dimensionsRendu().
+  VRAC: { l: A7_L, h: A7_H },
 };
 
+/** Dimensions de reference du canevas (3 px/mm pour le vrac). */
+export function dimensionsRendu(type: TypeCampagne, vrac?: ParametresVrac): { l: number; h: number } {
+  if (type === 'VRAC') {
+    const v = vrac ?? VRAC_DEFAUT;
+    return { l: v.largeurMm * 3, h: v.hauteurMm * 3 };
+  }
+  return DIMENSIONS[type];
+}
+
 /** Facteur d'agrandissement pour l'impression (~300 dpi). */
-export function facteurImpression(type: TypeCampagne, formatAffiche: 'A3' | 'A4' | 'A5' = 'A4'): number {
+export function facteurImpression(
+  type: TypeCampagne,
+  formatAffiche: 'A3' | 'A4' | 'A5' = 'A4',
+  vrac?: ParametresVrac,
+): number {
   if (type === 'A7') return 4; // 888 × 1260 px pour 74 × 105 mm
+  if (type === 'VRAC') {
+    // ≈ 300 dpi (12 px/mm), limite a 4500 px sur le grand cote pour rester leger en memoire.
+    const v = vrac ?? VRAC_DEFAUT;
+    return Math.max(1, Math.min(4, 4500 / (Math.max(v.largeurMm, v.hauteurMm) * 3)));
+  }
   if (type === 'BALISAGE') return 5; // 2250 × 600 px pour 150 × 40 mm
   return formatAffiche === 'A3' ? 7 : formatAffiche === 'A5' ? 4 : 5.5;
 }
@@ -51,14 +71,14 @@ export async function dessinerElement(
   ref: Reference,
   canvas: HTMLCanvasElement,
   k: number,
-  options: { signature?: boolean } = {},
+  options: { signature?: boolean; vrac?: ParametresVrac } = {},
 ): Promise<void> {
   await chargerPolices();
-  if (type === 'A7') {
+  if (type === 'A7' || type === 'VRAC') {
     const e = element as Saisie<ElementA7>;
     const sig = options.signature && ref.parametres.signatureActive ? ref.parametres.signatureTexte : undefined;
     const rc = await preparerA7(e, ref.mapA7, ref.parametres.couleursA7, sig);
-    dessinerA7(canvas, e, rc, k);
+    dessinerA7(canvas, e, rc, k, type === 'VRAC' ? geometrieVrac(options.vrac ?? VRAC_DEFAUT) : undefined);
   } else if (type === 'AFFICHE') {
     const e = element as Saisie<ElementAfficheSaisi>;
     const gabarit = ref.mapAffiche.get(e.gabarit) ?? [...ref.mapAffiche.values()][0] ?? gabaritsAfficheParDefaut()[0]!;

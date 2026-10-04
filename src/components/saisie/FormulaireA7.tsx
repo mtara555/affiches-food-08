@@ -11,7 +11,7 @@ import { notifier } from '../Notifications';
 import { useDonnees } from '../../context/DonneesContext';
 import { enregistrerArticle, gabaritA7Pour, normaliserCode, trouverArticle } from '../../lib/articles';
 import type { Article, ElementA7, Saisie } from '../../lib/types';
-import { GABARITS_A7_FIDELITE, UNITES } from '../../config/constants';
+import { GABARITS_A7_FIDELITE, UNITES, type ParametresVrac } from '../../config/constants';
 import { formaterPrix, versNombre } from '../../rendu/commun';
 import { detecterAllergenes } from '../../rendu/allergenes';
 import { messageErreur } from '../../lib/firebase';
@@ -21,6 +21,8 @@ interface Props {
   readonly auteur: string;
   readonly surValider: (s: Saisie<ElementA7>) => Promise<void>;
   readonly surAnnuler: () => void;
+  /** Campagne « vrac » : dimensions personnalisees, avec ou sans ingredients (sinon A7). */
+  readonly vrac?: ParametresVrac;
 }
 
 const CLE_UNITE = 'affiches-food.derniere-unite';
@@ -33,7 +35,7 @@ function uniteMemorisee(): string {
   }
 }
 
-export function FormulaireA7({ enEdition, auteur, surValider, surAnnuler }: Props) {
+export function FormulaireA7({ enEdition, auteur, surValider, surAnnuler, vrac }: Props) {
   const { parametres, gabaritsA7 } = useDonnees();
   const champCode = useRef<HTMLInputElement>(null);
   const champPrix = useRef<HTMLInputElement>(null);
@@ -60,6 +62,7 @@ export function FormulaireA7({ enEdition, auteur, surValider, surAnnuler }: Prop
   const gabaritAuto = gabaritA7Pour(normaliserCode(code), article ?? { gabaritA7: '', designationFr }, parametres.mapping);
   const gabarit = gabaritChoisi || gabaritAuto;
   const avecFidelite = GABARITS_A7_FIDELITE.includes(gabarit);
+  const sansIngredients = vrac ? !vrac.avecIngredients : false;
 
   function remplirDepuis(a: Article | null) {
     setDesignationFr(a?.designationFr ?? '');
@@ -174,6 +177,8 @@ export function FormulaireA7({ enEdition, auteur, surValider, surAnnuler }: Prop
   }
 
   const aDesDonnees = Boolean(saisie.code);
+  // Apercu : 250 px de large (portrait) ; limite en hauteur pour les formats paysage ou tres hauts.
+  const largeurApercu = vrac ? Math.round(Math.max(140, Math.min(250, (360 * vrac.largeurMm) / vrac.hauteurMm))) : 250;
 
   return (
     <div className="saisie">
@@ -187,7 +192,7 @@ export function FormulaireA7({ enEdition, auteur, surValider, surAnnuler }: Prop
               <span className="fiche-article__designation">{article.designationFr || '—'}</span>
               {article.designationAr ? <span className="fiche-article__reference texte-arabe" dir="rtl">{article.designationAr}</span> : null}
             </div>
-            {allergenes.length ? (
+            {allergenes.length && !sansIngredients ? (
               <div className="pastilles">
                 {allergenes.map((a) => (
                   <span className="pastille pastille--allergene" key={a}>{a}</span>
@@ -257,15 +262,19 @@ export function FormulaireA7({ enEdition, auteur, surValider, surAnnuler }: Prop
         </div>
 
         <button type="button" className="lien-bouton lien-bouton--discret" onClick={() => setDetails((d) => !d)}>
-          {details ? 'Masquer' : 'Modifier'} designations, ingredients et origine
+          {details ? 'Masquer' : 'Modifier'} designations{sansIngredients ? '' : ', ingredients'} et origine
         </button>
 
         {details ? (
           <div className="grille grille--details">
             <ChampTexte id="a7-desfr" libelle="Designation FR" valeur={designationFr} surChange={setDesignationFr} maxLength={60} />
             <ChampTexte id="a7-desar" libelle="Designation AR" valeur={designationAr} surChange={setDesignationAr} arabe sourceTraduction={designationFr} maxLength={60} />
-            <ChampTexte id="a7-ingfr" libelle="Ingredients FR" valeur={ingredientsFr} surChange={setIngredientsFr} multiligne />
-            <ChampTexte id="a7-ingar" libelle="Ingredients AR" valeur={ingredientsAr} surChange={setIngredientsAr} multiligne arabe sourceTraduction={ingredientsFr} nature="ingredients" />
+            {sansIngredients ? null : (
+              <>
+                <ChampTexte id="a7-ingfr" libelle="Ingredients FR" valeur={ingredientsFr} surChange={setIngredientsFr} multiligne />
+                <ChampTexte id="a7-ingar" libelle="Ingredients AR" valeur={ingredientsAr} surChange={setIngredientsAr} multiligne arabe sourceTraduction={ingredientsFr} nature="ingredients" />
+              </>
+            )}
             <ChampTexte id="a7-origine" libelle="Origine (pays)" valeur={origine} surChange={setOrigine} placeholder="France, Maroc…" />
           </div>
         ) : null}
@@ -281,8 +290,14 @@ export function FormulaireA7({ enEdition, auteur, surValider, surAnnuler }: Prop
       </div>
 
       <div className="saisie__apercu">
-        <p className="sous-titre">Apercu A7 · {gabarit}</p>
-        {aDesDonnees ? <Apercu type="A7" element={saisie} largeur={250} /> : <div className="apercu-vide apercu-vide--a7">Scannez un article</div>}
+        <p className="sous-titre">{vrac ? `Apercu vrac ${vrac.largeurMm} × ${vrac.hauteurMm} mm` : 'Apercu A7'} · {gabarit}</p>
+        {aDesDonnees ? (
+          <Apercu type={vrac ? 'VRAC' : 'A7'} element={saisie} largeur={largeurApercu} vrac={vrac} />
+        ) : (
+          <div className="apercu-vide apercu-vide--a7" style={{ width: largeurApercu, aspectRatio: vrac ? `${vrac.largeurMm} / ${vrac.hauteurMm}` : undefined }}>
+            Scannez un article
+          </div>
+        )}
       </div>
     </div>
   );

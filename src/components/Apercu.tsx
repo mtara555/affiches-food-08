@@ -5,10 +5,10 @@
  */
 
 import { useEffect, useMemo, useRef } from 'react';
-import type { TypeCampagne } from '../config/constants';
+import type { ParametresVrac, TypeCampagne } from '../config/constants';
 import type { Element, GabaritA7, GabaritAffiche, GabaritBalisage, Parametres, SaisieElement } from '../lib/types';
 import { useDonnees } from '../context/DonneesContext';
-import { DIMENSIONS, dessinerElement, type Reference } from '../rendu';
+import { dessinerElement, dimensionsRendu, type Reference } from '../rendu';
 import './Apercu.css';
 
 interface Props {
@@ -18,6 +18,8 @@ interface Props {
   readonly largeur: number;
   readonly className?: string;
   readonly titre?: string;
+  /** Dimensions et mode ingredients (type VRAC uniquement). */
+  readonly vrac?: ParametresVrac;
   /** Gabarit ou parametres en cours d'edition (non encore enregistres). */
   readonly surcharge?: {
     readonly a7?: GabaritA7;
@@ -34,7 +36,7 @@ function avec<T extends { id: string }>(map: ReadonlyMap<string, T>, g: T | unde
   return m;
 }
 
-export function Apercu({ type, element, largeur, className, titre, surcharge }: Props) {
+export function Apercu({ type, element, largeur, className, titre, surcharge, vrac }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
   const jeton = useRef(0);
   const base = useDonnees();
@@ -52,23 +54,31 @@ export function Apercu({ type, element, largeur, className, titre, surcharge }: 
     [base, surcharge],
   );
 
+  const vracL = vrac?.largeurMm;
+  const vracH = vrac?.hauteurMm;
+  const vracIng = vrac?.avecIngredients;
+  const vracStable = useMemo<ParametresVrac | undefined>(
+    () => (vracL && vracH ? { largeurMm: vracL, hauteurMm: vracH, avecIngredients: vracIng !== false } : undefined),
+    [vracL, vracH, vracIng],
+  );
+
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
     const n = ++jeton.current;
-    const dim = DIMENSIONS[type];
+    const dim = dimensionsRendu(type, vracStable);
     const densite = Math.min(3, Math.max(2, window.devicePixelRatio || 1));
     const k = (largeur / dim.l) * densite;
     const hors = document.createElement('canvas');
-    void dessinerElement(type, element, donnees, hors, k).then(() => {
+    void dessinerElement(type, element, donnees, hors, k, { vrac: vracStable }).then(() => {
       if (n !== jeton.current) return;
       canvas.width = hors.width;
       canvas.height = hors.height;
       canvas.getContext('2d')?.drawImage(hors, 0, 0);
     });
-  }, [type, element, largeur, donnees]);
+  }, [type, element, largeur, donnees, vracStable]);
 
-  const dim = DIMENSIONS[type];
+  const dim = dimensionsRendu(type, vracStable);
   return (
     <canvas
       ref={ref}

@@ -25,3 +25,14 @@ Ses données seront reprises à l'étape 2 grâce au fichier « Sauvegarder tout
 | `npm install` | Installation |
 | `npm run dev` | Serveur de développement |
 | `npm run build` | Contrôle des types + compilation dans `dist/` |
+
+## Affiches vrac (dimensions personnalisees)
+Nouveau type de campagne « Vrac » (menu *Campagnes → Nouvelle campagne*) :
+meme structure que l'etiquette A7 (designation FR/AR, prix, unite, fidelite, origine),
+avec **largeur et hauteur au choix (30 a 420 mm)** et, au choix, **avec** ou **sans ingredients**.
+- Les reglages sont enregistres dans la campagne et modifiables depuis l'ecran d'impression.
+- Gabarits : ceux de l'A7 (memes fonds, memes mises en page, adaptes proportionnellement).
+- PDF : imposition automatique sur A4 (portrait ou paysage, le plus de pieces par feuille) ;
+  trop grande pour un A4 -> une affiche par page, a sa taille exacte.
+- Moteur : `src/rendu/a7.ts` (`GeometrieA7`), imposition : `src/rendu/pdf.ts` (`pdfVrac`).
+- Apres mise a jour, redeployer `firestore.rules` (nouveaux champs de campagne autorises).

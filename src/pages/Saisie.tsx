@@ -12,6 +12,7 @@ import {
   listerElements,
   modifierElement,
   obtenirCampagne,
+  reglagesVrac,
   reordonner,
   supprimerElement,
 } from '../lib/campagnes';
@@ -25,7 +26,7 @@ import './Saisie.css';
 
 /** Resume d'un element pour le tableau. */
 function resume(type: Campagne['type'], e: Element): { titre: string; ar: string; prix: string; info: string } {
-  if (type === 'A7') {
+  if (type === 'A7' || type === 'VRAC') {
     const x = e as ElementA7;
     return { titre: x.designationFr, ar: x.designationAr, prix: `${x.prix} DH / ${x.unite}`, info: `${x.gabarit}${x.fidelite ? ` · fid. ${x.fidelite} %` : ''}` };
   }
@@ -131,8 +132,9 @@ export function Saisie() {
   }
 
   const def = campagne ? TYPES_CAMPAGNE[campagne.type] : null;
+  const vrac = campagne ? reglagesVrac(campagne) : undefined;
   const sousTitre = campagne && def
-    ? `${def.libelle}${campagne.type === 'AFFICHE' ? ` · ${FORMATS[campagne.format].libelle}` : ''} · ${elements.length} element(s)`
+    ? `${def.libelle}${campagne.type === 'AFFICHE' ? ` · ${FORMATS[campagne.format].libelle}` : ''}${vrac ? ` · ${vrac.largeurMm} × ${vrac.hauteurMm} mm · ${vrac.avecIngredients ? 'avec' : 'sans'} ingredients` : ''} · ${elements.length} element(s)`
     : '';
 
   const annuler = () => setEnEdition(null);
@@ -159,8 +161,8 @@ export function Saisie() {
         <>
           <section ref={carte} className={`carte${enEdition ? ' carte--edition' : ''}`}>
             <h2 className="carte__titre">{enEdition ? `Modifier l'element ${enEdition.code || ''}` : 'Ajouter un element'}</h2>
-            {campagne.type === 'A7' ? (
-              <FormulaireA7 enEdition={enEdition as ElementA7 | null} auteur={utilisateur.nom} surValider={valider} surAnnuler={annuler} />
+            {campagne.type === 'A7' || campagne.type === 'VRAC' ? (
+              <FormulaireA7 enEdition={enEdition as ElementA7 | null} auteur={utilisateur.nom} surValider={valider} surAnnuler={annuler} vrac={vrac} />
             ) : campagne.type === 'AFFICHE' ? (
               <FormulaireAffiche enEdition={enEdition as ElementAfficheSaisi | null} surValider={valider} surAnnuler={annuler} />
             ) : (

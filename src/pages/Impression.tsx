@@ -1,19 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { Apercu } from '../components/Apercu';
+import { ReglagesVrac } from '../components/saisie/ReglagesVrac';
 import { notifier } from '../components/Notifications';
 import { useDonnees } from '../context/DonneesContext';
-import { listerElements, modifierCampagne, obtenirCampagne } from '../lib/campagnes';
+import { listerElements, modifierCampagne, obtenirCampagne, reglagesVrac } from '../lib/campagnes';
 import type { Campagne, Element } from '../lib/types';
-import { FORMATS, FORMATS_ORDONNES, TYPES_CAMPAGNE, type FormatAffiche } from '../config/constants';
+import { FORMATS, FORMATS_ORDONNES, TYPES_CAMPAGNE, type FormatAffiche, type ParametresVrac } from '../config/constants';
 import { messageErreur } from '../lib/firebase';
 import { tracer } from '../lib/journal';
 import { dessinerElement, facteurImpression } from '../rendu';
-import { ouvrir, partager, pdfAffiches, pdfBalisage, pdfEtiquettesA7, telecharger, type ResultatPdf } from '../rendu/pdf';
+import { disposerVrac, ouvrir, partager, pdfAffiches, pdfBalisage, pdfEtiquettesA7, pdfVrac, telecharger, type ResultatPdf } from '../rendu/pdf';
 import './Impression.css';
 
-const LARGEUR_VIGNETTE = { A7: 150, AFFICHE: 170, BALISAGE: 330 } as const;
+const LARGEUR_VIGNETTE = { A7: 150, AFFICHE: 170, BALISAGE: 330, VRAC: 170 } as const;
 
 export function Impression() {
   const { campagneId = '' } = useParams<{ campagneId: string }>();
@@ -41,6 +42,24 @@ export function Impression() {
   }, [charger]);
 
   const selection = useMemo(() => elements.filter((e) => !exclus.has(e.id)), [elements, exclus]);
+  const vrac = useMemo(() => (campagne ? reglagesVrac(campagne) : undefined), [campagne]);
+
+  // Enregistre les reglages vrac apres une courte pause (evite une ecriture a chaque frappe).
+  const minuteurVrac = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(minuteurVrac.current), []);
+
+  function changerVrac(v: ParametresVrac) {
+    if (!campagne) return;
+    setResultat(null);
+    setCampagne({ ...campagne, largeurMm: v.largeurMm, hauteurMm: v.hauteurMm, avecIngredients: v.avecIngredients });
+    window.clearTimeout(minuteurVrac.current);
+    const id = campagne.id;
+    minuteurVrac.current = window.setTimeout(() => {
+      modifierCampagne(id, { largeurMm: v.largeurMm, hauteurMm: v.hauteurMm, avecIngredients: v.avecIngredients }).catch((e) =>
+        notifier(messageErreur(e), 'erreur'),
+      );
+    }, 600);
+  }
 
   function basculer(id: string) {
     setResultat(null);
@@ -67,17 +86,19 @@ export function Impression() {
     if (!campagne || !selection.length) return null;
     setResultat(null);
     setProgression({ fait: 0, total: selection.length });
-    const k = facteurImpression(campagne.type, campagne.format);
+    const k = facteurImpression(campagne.type, campagne.format, vrac);
     const dessiner = (canvas: HTMLCanvasElement, i: number) =>
-      dessinerElement(campagne.type, selection[i] as Element, donnees, canvas, k, { signature: true });
+      dessinerElement(campagne.type, selection[i] as Element, donnees, canvas, k, { signature: true, vrac });
     const suivi = (fait: number, total: number) => setProgression({ fait, total });
     try {
       const r =
         campagne.type === 'A7'
           ? await pdfEtiquettesA7(selection.length, dessiner, campagne.nom, donnees.parametres.piedDePage, suivi)
-          : campagne.type === 'AFFICHE'
-            ? await pdfAffiches(selection.length, campagne.format, dessiner, campagne.nom, suivi)
-            : await pdfBalisage(selection.length, dessiner, campagne.nom, suivi);
+          : campagne.type === 'VRAC'
+            ? await pdfVrac(selection.length, dessiner, campagne.nom, campagne.largeurMm, campagne.hauteurMm, donnees.parametres.piedDePage, suivi)
+            : campagne.type === 'AFFICHE'
+              ? await pdfAffiches(selection.length, campagne.format, dessiner, campagne.nom, suivi)
+              : await pdfBalisage(selection.length, dessiner, campagne.nom, suivi);
       setResultat(r);
       tracer('export', 'impression', `« ${campagne.nom} » : PDF de ${selection.length} element(s), ${r.pages} page(s)`);
       if (campagne.statut === 'brouillon') {
@@ -110,7 +131,16 @@ export function Impression() {
   }
 
   const type = campagne?.type ?? 'A7';
-  const parPage = type === 'A7' ? 4 : type === 'BALISAGE' ? 7 : FORMATS[campagne?.format ?? 'A4'].parPage;
+  const parPage =
+    type === 'A7'
+      ? 4
+      : type === 'BALISAGE'
+        ? 7
+        : type === 'VRAC'
+          ? disposerVrac(campagne?.largeurMm ?? 100, campagne?.hauteurMm ?? 140).parPage
+          : FORMATS[campagne?.format ?? 'A4'].parPage;
+  const largeurVignette =
+    type === 'VRAC' && vrac ? Math.round(Math.max(120, Math.min(260, (230 * vrac.largeurMm) / vrac.hauteurMm))) : LARGEUR_VIGNETTE[type];
   const pages = Math.ceil(selection.length / parPage);
 
   return (
@@ -138,6 +168,8 @@ export function Impression() {
                   ))}
                 </select>
               </div>
+            ) : campagne.type === 'VRAC' && vrac ? (
+              <ReglagesVrac valeur={vrac} surChange={changerVrac} idPrefixe="impression-vrac" />
             ) : (
               <p className="carte__texte">
                 {campagne.type === 'A7' ? '4 etiquettes 74 × 105 mm par feuille A4.' : '7 bandes 150 × 40 mm par feuille A4.'}
@@ -180,7 +212,7 @@ export function Impression() {
               {elements.map((e, i) => (
                 <label key={e.id} className={`vignette${exclus.has(e.id) ? ' est-exclue' : ''}`}>
                   <input type="checkbox" checked={!exclus.has(e.id)} onChange={() => basculer(e.id)} />
-                  <Apercu type={campagne.type} element={e} largeur={LARGEUR_VIGNETTE[campagne.type]} titre={`Element ${i + 1}`} />
+                  <Apercu type={campagne.type} element={e} largeur={largeurVignette} vrac={vrac} titre={`Element ${i + 1}`} />
                   <span className="vignette__legende">{i + 1}. {e.code || '—'}</span>
                 </label>
               ))}

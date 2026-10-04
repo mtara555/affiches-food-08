@@ -16,9 +16,12 @@ import {
   FORMATS_ORDONNES,
   TYPES_CAMPAGNE,
   TYPES_ORDONNES,
+  VRAC_DEFAUT,
   type FormatAffiche,
+  type ParametresVrac,
   type TypeCampagne,
 } from '../config/constants';
+import { ReglagesVrac } from '../components/saisie/ReglagesVrac';
 import { messageErreur } from '../lib/firebase';
 import { tracer } from '../lib/journal';
 import './Campagnes.css';
@@ -44,6 +47,7 @@ export function Campagnes() {
   const [type, setType] = useState<TypeCampagne>('A7');
   const [nom, setNom] = useState('');
   const [format, setFormat] = useState<FormatAffiche>('A4');
+  const [vrac, setVrac] = useState<ParametresVrac>(VRAC_DEFAUT);
   const [creation, setCreation] = useState(false);
 
   const charger = useCallback(async () => {
@@ -75,8 +79,8 @@ export function Campagnes() {
     const n = nom.trim() || nomParDefaut(type);
     setCreation(true);
     try {
-      const id = await creerCampagne(n, type, format, { id: utilisateur.id, nom: utilisateur.nom });
-      tracer('creation', 'campagnes', `Campagne « ${n} » (${TYPES_CAMPAGNE[type].libelle})`);
+      const id = await creerCampagne(n, type, format, { id: utilisateur.id, nom: utilisateur.nom }, type === 'VRAC' ? vrac : undefined);
+      tracer('creation', 'campagnes', `Campagne « ${n} » (${TYPES_CAMPAGNE[type].libelle}${type === 'VRAC' ? ` ${vrac.largeurMm} × ${vrac.hauteurMm} mm, ${vrac.avecIngredients ? 'avec' : 'sans'} ingredients` : ''})`);
       naviguer(`/saisie/${id}`);
     } catch (err) {
       notifier(messageErreur(err), 'erreur');
@@ -144,6 +148,7 @@ export function Campagnes() {
               );
             })}
           </div>
+          {type === 'VRAC' ? <ReglagesVrac valeur={vrac} surChange={setVrac} idPrefixe="creation-vrac" /> : null}
           <div className="formulaire-ligne">
             <div className="champ champ--extensible">
               <label htmlFor="nom-campagne">Nom</label>
@@ -209,6 +214,7 @@ export function Campagnes() {
                     <span className="badge-type" style={{ '--couleur-type': TYPES_CAMPAGNE[c.type].couleur } as React.CSSProperties}>
                       {TYPES_CAMPAGNE[c.type].court}
                       {c.type === 'AFFICHE' ? ` ${c.format}` : ''}
+                      {c.type === 'VRAC' ? ` ${c.largeurMm}×${c.hauteurMm}` : ''}
                     </span>
                   </td>
                   <td>{c.nbElements}</td>

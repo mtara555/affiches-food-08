@@ -4,6 +4,9 @@
  *  - Etiquettes A7 : 4 par feuille A4 portrait (positions de l'ancienne application).
  *  - Affiches : A4 = 1 par page A4, A3 = 1 par page A3, A5 = 2 par A4 paysage.
  *  - Balisage 150 × 40 mm : 7 par feuille A4 portrait.
+ *  - Affiches vrac (dimensions personnalisees) : grille automatique sur A4
+ *    (portrait ou paysage, au plus de pieces par feuille) ; trop grandes pour
+ *    un A4 -> une par page, a leur taille exacte.
  *
  * Chaque element est dessine hors ecran a haute resolution puis insere en JPEG
  * (PNG pour le balisage, texte fin). jsPDF est charge a la demande.
@@ -26,7 +29,7 @@ export type Dessinateur = (canvas: HTMLCanvasElement, index: number) => Promise<
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
 const nomPropre = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9_-]+/g, '_').slice(0, 60);
 
-async function nouveauPdf(orientation: 'portrait' | 'landscape', format: 'a4' | 'a3') {
+async function nouveauPdf(orientation: 'portrait' | 'landscape', format: 'a4' | 'a3' | [number, number]) {
   await chargerPolices();
   const { jsPDF } = await import('jspdf');
   return new jsPDF({ orientation, unit: 'mm', format, compress: true });
@@ -69,6 +72,103 @@ export async function pdfEtiquettesA7(
     }
   }
   return { blob: pdf.output('blob'), nomFichier: `Etiquettes_A7_${nomPropre(nomCampagne)}_${aujourdhui()}.pdf`, pages };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Affiches vrac : dimensions personnalisees                                   */
+/* -------------------------------------------------------------------------- */
+
+const MARGE_VRAC = 4;
+const ECART_VRAC = 1.5;
+
+export interface DispositionVrac {
+  readonly orientation: 'portrait' | 'landscape';
+  /** Dimensions de la page (mm). */
+  readonly pageL: number;
+  readonly pageH: number;
+  readonly colonnes: number;
+  readonly lignes: number;
+  readonly parPage: number;
+  /** Vrai si l'affiche ne tient pas sur un A4 : une par page, a sa taille exacte. */
+  readonly pageSurMesure: boolean;
+}
+
+/** Choisit la meilleure imposition (A4 portrait ou paysage) pour une affiche l × h mm. */
+export function disposerVrac(l: number, h: number): DispositionVrac {
+  const essai = (pageL: number, pageH: number) => ({
+    colonnes: Math.max(0, Math.floor((pageL - 2 * MARGE_VRAC + ECART_VRAC) / (l + ECART_VRAC))),
+    lignes: Math.max(0, Math.floor((pageH - 2 * MARGE_VRAC + ECART_VRAC) / (h + ECART_VRAC))),
+  });
+  const portrait = essai(210, 297);
+  const paysage = essai(297, 210);
+  const nbPortrait = portrait.colonnes * portrait.lignes;
+  const nbPaysage = paysage.colonnes * paysage.lignes;
+  if (nbPortrait === 0 && nbPaysage === 0) {
+    return { orientation: l > h ? 'landscape' : 'portrait', pageL: l, pageH: h, colonnes: 1, lignes: 1, parPage: 1, pageSurMesure: true };
+  }
+  const choix = nbPaysage > nbPortrait ? paysage : portrait;
+  const orientation = nbPaysage > nbPortrait ? 'landscape' : 'portrait';
+  return {
+    orientation,
+    pageL: orientation === 'landscape' ? 297 : 210,
+    pageH: orientation === 'landscape' ? 210 : 297,
+    colonnes: choix.colonnes,
+    lignes: choix.lignes,
+    parPage: choix.colonnes * choix.lignes,
+    pageSurMesure: false,
+  };
+}
+
+export async function pdfVrac(
+  total: number,
+  dessiner: Dessinateur,
+  nomCampagne: string,
+  largeurMm: number,
+  hauteurMm: number,
+  piedDePage: boolean,
+  progression?: Progression,
+): Promise<ResultatPdf> {
+  const d = disposerVrac(largeurMm, hauteurMm);
+  const pdf = await nouveauPdf(d.orientation, d.pageSurMesure ? [d.pageL, d.pageH] : 'a4');
+  const canvas = document.createElement('canvas');
+  // Grille centree horizontalement, alignee en haut (marge de 5 mm).
+  const largeurGrille = d.colonnes * largeurMm + (d.colonnes - 1) * ECART_VRAC;
+  const x0 = d.pageSurMesure ? 0 : (d.pageL - largeurGrille) / 2;
+  const y0 = d.pageSurMesure ? 0 : MARGE_VRAC;
+  for (let i = 0; i < total; i++) {
+    const place = i % d.parPage;
+    if (i > 0 && place === 0) pdf.addPage();
+    const col = place % d.colonnes;
+    const ligne = Math.floor(place / d.colonnes);
+    await dessiner(canvas, i);
+    pdf.addImage(
+      canvas.toDataURL('image/jpeg', 0.92),
+      'JPEG',
+      x0 + col * (largeurMm + ECART_VRAC),
+      y0 + ligne * (hauteurMm + ECART_VRAC),
+      largeurMm,
+      hauteurMm,
+      undefined,
+      'FAST',
+    );
+    progression?.(i + 1, total);
+    await pause();
+  }
+  const pages = pdf.getNumberOfPages();
+  if (piedDePage && !d.pageSurMesure) {
+    for (let p = 1; p <= pages; p++) {
+      pdf.setPage(p);
+      pdf.setFontSize(6);
+      pdf.setTextColor(160, 160, 160);
+      pdf.text(`Affiches vrac ${largeurMm} × ${hauteurMm} mm · ${nomCampagne} · ${new Date().toLocaleDateString('fr-FR')}`, 5, d.pageH - 2);
+      pdf.text(`Page ${p}/${pages}`, d.pageL - 5, d.pageH - 2, { align: 'right' });
+    }
+  }
+  return {
+    blob: pdf.output('blob'),
+    nomFichier: `Vrac_${largeurMm}x${hauteurMm}_${nomPropre(nomCampagne)}_${aujourdhui()}.pdf`,
+    pages,
+  };
 }
 
 export async function pdfAffiches(

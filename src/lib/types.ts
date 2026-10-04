@@ -218,6 +218,10 @@ export interface Campagne {
   readonly type: TypeCampagne;
   /** Format d'impression pour les affiches. */
   readonly format: FormatAffiche;
+  /** Campagnes « Vrac » : dimensions de l'affiche (mm) et presence des ingredients. */
+  readonly largeurMm: number;
+  readonly hauteurMm: number;
+  readonly avecIngredients: boolean;
   readonly statut: 'brouillon' | 'imprimee' | 'archivee';
   readonly nbElements: number;
   readonly creeLe: Date | null;

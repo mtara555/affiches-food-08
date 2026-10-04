@@ -23,7 +23,7 @@ export const DOMAINE_IDENTIFIANT = 'marjane08.local';
 /* Types de campagne                                                           */
 /* -------------------------------------------------------------------------- */
 
-export type TypeCampagne = 'A7' | 'AFFICHE' | 'BALISAGE';
+export type TypeCampagne = 'A7' | 'AFFICHE' | 'BALISAGE' | 'VRAC';
 
 export interface DefinitionType {
   readonly code: TypeCampagne;
@@ -55,9 +55,16 @@ export const TYPES_CAMPAGNE: Readonly<Record<TypeCampagne, DefinitionType>> = {
     description: 'Bandeaux 150 × 40 mm boulangerie / patisserie avec ingredients — 7 par feuille A4.',
     couleur: '#5c2d0a',
   },
+  VRAC: {
+    code: 'VRAC',
+    libelle: 'Affiches vrac (dimensions personnalisees)',
+    court: 'Vrac',
+    description: 'Meme structure que l\'A7 (designation FR/AR, prix, unite, origine), largeur et hauteur au choix, avec ou sans ingredients.',
+    couleur: '#0f766e',
+  },
 } as const;
 
-export const TYPES_ORDONNES: readonly TypeCampagne[] = ['A7', 'AFFICHE', 'BALISAGE'];
+export const TYPES_ORDONNES: readonly TypeCampagne[] = ['A7', 'VRAC', 'AFFICHE', 'BALISAGE'];
 
 /* -------------------------------------------------------------------------- */
 /* Formats d'affiche (homothetiques : A3 et A5 = A4 agrandie / reduite)         */
@@ -82,6 +89,33 @@ export const FORMATS: Readonly<Record<FormatAffiche, DefinitionFormat>> = {
 };
 
 export const FORMATS_ORDONNES: readonly FormatAffiche[] = ['A3', 'A4', 'A5'];
+
+/* -------------------------------------------------------------------------- */
+/* Affiches vrac (meme structure que l'A7, dimensions personnalisees)          */
+/* -------------------------------------------------------------------------- */
+
+/** Reglages d'une campagne « Vrac » : dimensions de l'affiche et presence des ingredients. */
+export interface ParametresVrac {
+  readonly largeurMm: number;
+  readonly hauteurMm: number;
+  readonly avecIngredients: boolean;
+}
+
+export const VRAC_DEFAUT: ParametresVrac = { largeurMm: 100, hauteurMm: 140, avecIngredients: true };
+
+/** Bornes acceptees pour chaque cote (mm). */
+export const VRAC_MIN_MM = 30;
+export const VRAC_MAX_MM = 420;
+
+/** Dimensions courantes proposees dans la liste (mm). */
+export const VRAC_PRESETS: readonly { readonly libelle: string; readonly largeurMm: number; readonly hauteurMm: number }[] = [
+  { libelle: 'A7 — 74 × 105 mm', largeurMm: 74, hauteurMm: 105 },
+  { libelle: '90 × 130 mm', largeurMm: 90, hauteurMm: 130 },
+  { libelle: '100 × 140 mm', largeurMm: 100, hauteurMm: 140 },
+  { libelle: 'A6 — 105 × 148 mm', largeurMm: 105, hauteurMm: 148 },
+  { libelle: '120 × 170 mm', largeurMm: 120, hauteurMm: 170 },
+  { libelle: 'A5 — 148 × 210 mm', largeurMm: 148, hauteurMm: 210 },
+];
 
 /* -------------------------------------------------------------------------- */
 /* Etiquettes A7                                                               */

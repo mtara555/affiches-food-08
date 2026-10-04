@@ -56,7 +56,7 @@ service cloud.firestore {
       allow update: if actif() && (
         admin()
         || resource.data.creePar == request.auth.uid
-        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nbElements', 'majLe', 'statut', 'format'])
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nbElements', 'majLe', 'statut', 'format', 'largeurMm', 'hauteurMm', 'avecIngredients'])
       );
       allow delete: if admin() || (actif() && resource.data.creePar == request.auth.uid);
 
