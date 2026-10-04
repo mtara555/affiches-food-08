@@ -86,7 +86,7 @@ export function marquerAllergenesFr(mots: readonly string[]): boolean[] {
     for (const terme of TERMES_COMPOSES_FR) {
       if (i + terme.length > mots.length) continue;
       const ok = terme.every((t, k) => {
-        const w = normalises[i + k];
+        const w = normalises[i + k] ?? '';
         return w === t || w.startsWith(t);
       });
       if (ok) {
@@ -95,7 +95,7 @@ export function marquerAllergenesFr(mots: readonly string[]): boolean[] {
     }
 
     // 2) mot simple (comportement existant)
-    if (!flags[i] && estAllergeneFr(mots[i])) flags[i] = true;
+    if (!flags[i] && estAllergeneFr(mots[i] ?? '')) flags[i] = true;
   }
   return flags;
 }
