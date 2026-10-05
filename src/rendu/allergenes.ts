@@ -9,7 +9,7 @@
  */
 
 const GROUPES_FR: readonly (readonly string[])[] = [
-  ['GLUTEN', 'BLE', 'ORGE', 'AVOINE', 'SEIGLE', 'EPEAUTRE', 'KAMUT', 'CHAPELURE', 'FARINE DE LUXE'],
+  ['GLUTEN', 'BLE', 'ORGE', 'AVOINE', 'SEIGLE', 'EPEAUTRE', 'KAMUT', 'CHAPELURE', 'FARINE DE LUXE', 'MULTICÉRÉALES'],
   ['CRUSTACE', 'CREVETTE', 'CRABE', 'HOMARD', 'LANGOUSTE'],
   ['POISSON', 'SAUMON', 'THON', 'TRUITE'],
   ['ŒUF', 'OEUF'],
@@ -29,7 +29,7 @@ const GROUPES_FR: readonly (readonly string[])[] = [
 export const ALLERGENES_FR: readonly string[] = GROUPES_FR.flat();
 
 export const ALLERGENES_AR: readonly string[] = [
- 'الغلوتين', 'قمح', 'شعير', 'شوفان', 'جاودار', 'شابلور', 'دقيق فاخر',
+ 'متعدد الحبوب' ,'الغلوتين', 'قمح', 'شعير', 'شوفان', 'جاودار', 'شابلور', 'دقيق فاخر',
   'قشريات', 'جمبري', 'كراب', 'سلطعون',
   'سمك', 'سلمون', 'تونة', 'تونا', 'أنشوجة', 
   'بيض', 'بيضة',
