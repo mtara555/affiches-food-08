@@ -16,7 +16,7 @@ const GROUPES_FR: readonly (readonly string[])[] = [
   ['LAIT', 'FROMAGE', 'BEURRE', 'CREME FRAICHE', 'CREME'],
   ['ARACHIDE', 'CACAHUETE'],
   ['SOJA'],
-  ['AMANDE', 'NOIX', 'NOISETTE', 'CAJOU', 'PISTACHE', 'PECAN', 'MACADAMIA'],
+  ['AMANDE', 'NOIX', 'NOISETTE', 'CAJOU', 'PISTACHE', 'PECAN', 'MACADAMIA', 'FRUITS A COQUE'],
   ['CELERI'],
   ['MOUTARDE'],
   ['SESAME'],
