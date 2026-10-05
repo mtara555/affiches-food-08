@@ -9,7 +9,7 @@
  */
 
 const GROUPES_FR: readonly (readonly string[])[] = [
-  ['GLUTEN', 'BLE', 'ORGE', 'AVOINE', 'SEIGLE', 'EPEAUTRE', 'KAMUT', 'CHAPELURE'],
+  ['GLUTEN', 'BLE', 'ORGE', 'AVOINE', 'SEIGLE', 'EPEAUTRE', 'KAMUT', 'CHAPELURE', 'FARINE DE LUXE'],
   ['CRUSTACE', 'CREVETTE', 'CRABE', 'HOMARD', 'LANGOUSTE'],
   ['POISSON', 'SAUMON', 'THON', 'TRUITE'],
   ['ŒUF', 'OEUF'],
@@ -29,9 +29,9 @@ const GROUPES_FR: readonly (readonly string[])[] = [
 export const ALLERGENES_FR: readonly string[] = GROUPES_FR.flat();
 
 export const ALLERGENES_AR: readonly string[] = [
-  'الغلوتين', 'قمح', 'شعير', 'شوفان', 'جاودار', 'شابلور',
+ 'الغلوتين', 'قمح', 'شعير', 'شوفان', 'جاودار', 'شابلور', 'دقيق فاخر',
   'قشريات', 'جمبري', 'كراب', 'سلطعون',
-  'سمك', 'سلمون', 'تونة', 'تونا', 'أنشوجة',
+  'سمك', 'سلمون', 'تونة', 'تونا', 'أنشوجة', 
   'بيض', 'بيضة',
   'حليب', 'لبن', 'جبن', 'جبنة', 'كريمة', 'كريمة طازجة', 'قشدة طرية', 'قشدة طازجة', 'قشدة', 'زبدة', 'لاكتوز',
   'فول سوداني', 'فستق سوداني',
