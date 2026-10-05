@@ -33,7 +33,7 @@ export const ALLERGENES_AR: readonly string[] = [
   'قشريات', 'جمبري', 'كراب', 'سلطعون',
   'سمك', 'سلمون', 'تونة', 'تونا', 'أنشوجة',
   'بيض', 'بيضة',
-  'حليب', 'لبن', 'جبن', 'جبنة', 'كريمة', 'قشدة طازجة', 'قشدة ', 'زبدة', 'لاكتوز',
+  'حليب', 'لبن', 'جبن', 'جبنة', 'كريمة', 'كريمة طازجة', 'قشدة طرية', 'قشدة طازجة', 'قشدة', 'زبدة', 'لاكتوز',
   'فول سوداني', 'فستق سوداني',
   'صويا', 'صوجا', 'فول الصويا', 'سويا',
   'مكسرات', 'لوز', 'جوز', 'بندق', 'كاجو', 'فستق', 'زيت نباتي',
@@ -63,13 +63,76 @@ export function estAllergeneFr(mot: string): boolean {
   return ALLERGENES_FR.some((a) => w === a || w.startsWith(a));
 }
 
-export function estAllergeneAr(mot: string): boolean {
-  const w = mot.trim();
-  if (w.length < 2) return false;
+/* ------------------------------------------------------------------ */
+/* Arabe : correspondance sur MOT ENTIER (avec prefixes/suffixes usuels) */
+/* ------------------------------------------------------------------ */
 
-  return ALLERGENES_AR.some((a) =>
-    w === a || w.includes(a) || a.includes(w)
-  );
+/** Prefixes courants : « ال », « و », « ب », « ل », « ك », « ف » et leurs combinaisons. */
+const PREFIXES_AR: readonly string[] = [
+  '', 'ال', 'و', 'وال', 'ب', 'بال', 'ل', 'لل', 'ك', 'كال', 'ف', 'فال', 'ول', 'ولل', 'وب', 'وبال',
+];
+const SUFFIXES_AR: readonly string[] = ['', 'ة', 'ات', 'ها'];
+
+/** Lettres arabes uniquement : sans voyelles, tatweel, ponctuation ; alef et ya unifies. */
+export function normaliserMotAr(mot: string): string {
+  return mot
+    .normalize('NFC')
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/[^\u0621-\u064A]/g, '');
+}
+
+const TERMES_AR: readonly (readonly string[])[] = ALLERGENES_AR
+  .map((a) => a.trim().split(/\s+/).map(normaliserMotAr).filter(Boolean))
+  .filter((t) => t.length > 0);
+const SIMPLES_AR: readonly string[] = TERMES_AR.filter((t) => t.length === 1).map((t) => t[0] ?? '');
+const COMPOSES_AR: readonly (readonly string[])[] = TERMES_AR.filter((t) => t.length > 1);
+
+/** Le mot est-il exactement le terme, avec prefixe/suffixe usuel eventuel ? */
+function correspondAr(mot: string, terme: string): boolean {
+  if (!terme) return false;
+  for (const p of PREFIXES_AR) {
+    if (!mot.startsWith(p)) continue;
+    const reste = mot.slice(p.length);
+    for (const suf of SUFFIXES_AR) {
+      if (reste === terme + suf) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Mot isole. Correspondance sur le mot entier : « السليلوز » (cellulose)
+ * n'est plus confondu avec « لوز » (amande) car il ne fait que le contenir.
+ */
+export function estAllergeneAr(mot: string): boolean {
+  const w = normaliserMotAr(mot);
+  if (w.length < 2) return false;
+  return SIMPLES_AR.some((a) => correspondAr(w, a));
+}
+
+/**
+ * Pour une liste de mots arabes, true = a afficher en rouge.
+ * Gere les termes composes (« قشدة طازجة », « فول سوداني »…).
+ */
+export function marquerAllergenesAr(mots: readonly string[]): boolean[] {
+  const n = mots.map(normaliserMotAr);
+  const flags: boolean[] = new Array(mots.length).fill(false);
+
+  for (let i = 0; i < n.length; i++) {
+    for (const terme of COMPOSES_AR) {
+      if (i + terme.length > n.length) continue;
+      const ok = terme.every((t, k) => correspondAr(n[i + k] ?? '', t));
+      if (ok) {
+        for (let k = 0; k < terme.length; k++) flags[i + k] = true;
+      }
+    }
+    if (!flags[i] && (n[i] ?? '').length >= 2 && SIMPLES_AR.some((a) => correspondAr(n[i] ?? '', a))) {
+      flags[i] = true;
+    }
+  }
+  return flags;
 }
 
 /**
