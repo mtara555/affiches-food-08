@@ -7,7 +7,7 @@
  * « (LAIT), » -> « ( » normal, « LAIT » rouge, « ), » normal.
  */
 
-import { estAllergeneAr, marquerAllergenesFr } from './allergenes';
+import { marquerAllergenesAr, marquerAllergenesFr } from './allergenes';
 
 interface Segment {
   readonly t: string;
@@ -60,15 +60,14 @@ function mesurerMotsFr(ctx: CanvasRenderingContext2D, texte: string, s: StyleTex
 }
 
 function mesurerMotsAr(ctx: CanvasRenderingContext2D, texte: string, s: StyleTexte): Mot[] {
-  return texte
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((t) => {
-      const alg = estAllergeneAr(t.replace(/[،,;.()]/g, ''));
-      ctx.font = police(s, alg);
-      const w = ctx.measureText(t).width;
-      return { segments: [{ t, alg, w }], w };
-    });
+  const mots = texte.split(/\s+/).filter(Boolean);
+  const flags = marquerAllergenesAr(mots);
+  return mots.map((t, i) => {
+    const alg = flags[i] ?? false;
+    ctx.font = police(s, alg);
+    const w = ctx.measureText(t).width;
+    return { segments: [{ t, alg, w }], w };
+  });
 }
 
 function couper(mots: Mot[], maxW: number, espace: number): Mot[][] {
@@ -156,3 +155,4 @@ export function tailleAjustee(
   }
   return min;
 }
+
