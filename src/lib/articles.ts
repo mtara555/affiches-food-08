@@ -327,6 +327,45 @@ export async function importerArticles(
   return fait;
 }
 
+/**
+ * Applique en masse le gabarit A7 impose (code -> gabarit, '' = retirer).
+ * Seuls les lots concernes sont reecrits (64 transactions au plus) ; les autres
+ * champs des fiches ne sont pas touches.
+ */
+export async function appliquerGabarits(
+  modifications: ReadonlyMap<string, string>,
+  auteur: string,
+  progression?: Progression,
+): Promise<number> {
+  const parLot = new Map<string, [string, string][]>();
+  for (const [codeBrut, gabarit] of modifications) {
+    const code = normaliserCode(codeBrut);
+    if (!code) continue;
+    const id = lotDe(code);
+    const l = parLot.get(id) ?? [];
+    l.push([code, gabarit.trim().toUpperCase()]);
+    parLot.set(id, l);
+  }
+  let fait = 0;
+  for (const [id, liste] of parLot) {
+    let modifies = 0;
+    await modifierLot(id, (c) => {
+      modifies = 0; // la transaction peut etre rejouee
+      for (const [code, gab] of liste) {
+        const ligne = c[code];
+        if (!ligne) continue;
+        ligne[6] = gab;
+        ligne[7] = Date.now();
+        ligne[8] = auteur;
+        modifies++;
+      }
+    });
+    fait += modifies;
+    progression?.(fait, modifications.size);
+  }
+  return fait;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Choix du gabarit A7                                                         */
 /* -------------------------------------------------------------------------- */
