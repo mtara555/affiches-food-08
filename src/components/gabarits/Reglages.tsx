@@ -73,15 +73,17 @@ interface ImageProps {
   readonly coteMax: number;
   readonly aide: string;
   readonly transparence?: boolean;
+  /** Libelle du bouton d'import (defaut : « Choisir une image de fond »). */
+  readonly libelle?: string;
 }
 
-export function ChoixImage({ image, surChange, coteMax, aide, transparence }: ImageProps) {
+export function ChoixImage({ image, surChange, coteMax, aide, transparence, libelle }: ImageProps) {
   const [traitement, setTraitement] = useState(false);
   return (
     <div className="choix-image">
       <div className="choix-image__actions">
         <label className={`bouton bouton--discret bouton--petit${traitement ? ' est-desactive' : ''}`}>
-          {traitement ? 'Compression…' : image ? "Remplacer l'image" : 'Choisir une image de fond'}
+          {traitement ? 'Compression…' : image ? "Remplacer l'image" : (libelle ?? 'Choisir une image de fond')}
           <input
             type="file"
             accept="image/png,image/jpeg,image/webp"

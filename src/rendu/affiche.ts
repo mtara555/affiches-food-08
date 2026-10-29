@@ -14,6 +14,8 @@ import type {
   ElementAffiche,
   ElementAfficheSaisi,
   GabaritAffiche,
+  LangueDesignation,
+  OrganigrammeAffiche,
   Parametres,
   Picto,
   Saisie,
@@ -30,6 +32,8 @@ export interface ContexteAffiche {
   readonly gabarit: GabaritAffiche;
   readonly fond: HTMLImageElement | null;
   readonly picto: HTMLImageElement | null;
+  /** Image de l'organigramme (zone economie) ; null = aucun / echec de chargement. */
+  readonly organigramme: HTMLImageElement | null;
   readonly entete: string;
   readonly economie: ResultatEconomie;
 }
@@ -73,6 +77,87 @@ export function calculerEconomie(
 }
 
 /* -------------------------------------------------------------------------- */
+/* Designations AR / FR                                                        */
+/* -------------------------------------------------------------------------- */
+
+const RE_ARABE = /[\u0600-\u06FF]/;
+/** Lettres latines (accentuees comprises) ; × et ÷ exclus. Chiffres et ponctuation sont neutres. */
+const RE_LATIN = /[A-Za-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u024F]/;
+
+/**
+ * Detecte la langue d'une designation.
+ *
+ * Entree  : texte saisi (peut etre undefined cote donnees anciennes).
+ * Sortie  : 'vide'  si vide apres trim ;
+ *           'mixte' si au moins un caractere arabe (U+0600–U+06FF) ET au moins une lettre latine ;
+ *           'ar'    si au moins un caractere arabe et aucune lettre latine ;
+ *           'fr'    sinon (latin, chiffres, ponctuation).
+ * Cas limites : chiffres et ponctuation seuls -> 'fr' ; « حليب 1 لتر » -> 'ar'
+ *           (les chiffres ne comptent pas comme latin) ; « حليب 1L » -> 'mixte'.
+ */
+export function detecterLangueDesignation(texte: string): LangueDesignation {
+  const t = (texte ?? '').trim();
+  if (!t) return 'vide';
+  const arabe = RE_ARABE.test(t);
+  const latin = RE_LATIN.test(t);
+  if (arabe && latin) return 'mixte';
+  return arabe ? 'ar' : 'fr';
+}
+
+/**
+ * Repartit les designations saisies entre la zone arabe et la zone francaise.
+ *
+ * Entrees : contenu des champs « Designation FR » et « Designation AR ».
+ * Sortie  : { fr, ar } — chaine vide = zone non dessinee.
+ * Regles  : une zone ne recoit jamais que sa propre langue ;
+ *           texte arabe ou mixte -> zone arabe (priorite arabe, la zone FR reste vide pour ce texte) ;
+ *           texte latin -> zone francaise ; texte vide -> rien.
+ * Cas limites : texte arabe saisi dans le champ FR (ou latin dans le champ AR) est redirige vers
+ *           la bonne zone ; si les deux champs portent la meme langue, le champ « naturel » de la
+ *           zone l'emporte et l'autre est ignore.
+ */
+export function resoudreDesignations(desFR: string, desAR: string): { fr: string; ar: string } {
+  const tFr = (desFR ?? '').trim();
+  const tAr = (desAR ?? '').trim();
+  const lFr = detecterLangueDesignation(tFr);
+  const lAr = detecterLangueDesignation(tAr);
+  const estArabe = (l: LangueDesignation) => l === 'ar' || l === 'mixte';
+  const ar = estArabe(lAr) ? tAr : estArabe(lFr) ? tFr : '';
+  const fr = lFr === 'fr' ? tFr : lAr === 'fr' ? tAr : '';
+  return { fr, ar };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Zone economie : couleur, libelle, organigramme                              */
+/* -------------------------------------------------------------------------- */
+
+/** Bleu Marjane du rectangle economie (ancien rouge #C8102E). */
+export const COULEUR_ECONOMIE_DEFAUT = '#004497';
+
+/** Zone « Organigramme1 » du depot AFFICHES-EM-supabase (mm sur A4 210 × 297). */
+export const ORGANIGRAMME_DEFAUT = { x: 28.0, y: 185.8, w: 152.0, h: 59.5 } as const;
+
+/** Organigramme effectif d'un gabarit : valeurs enregistrees completees par les defauts. */
+export function organigrammeEffectif(g: GabaritAffiche): OrganigrammeAffiche {
+  return { image: null, ...ORGANIGRAMME_DEFAUT, ...(g.organigramme ?? {}) };
+}
+
+/**
+ * Libelle de la zone economie : « وفر X Dhs » (ar) ou « Économisez X Dhs » (fr).
+ *
+ * Entrees : ecart = prix barre − prix promo ; langue du libelle.
+ * Sortie  : chaine prete a dessiner ; X sans decimales si l'ecart est entier
+ *           (50 -> « 50 »), sinon deux decimales avec virgule (12,5 -> « 12,50 »).
+ * Cas limite : ecart <= 0 ou non fini -> '' (rien a afficher).
+ */
+export function libelleEconomie(ecart: number, langue: 'ar' | 'fr'): string {
+  if (!Number.isFinite(ecart) || ecart <= 0) return '';
+  const arrondi = Math.round(ecart * 100) / 100;
+  const montant = Number.isInteger(arrondi) ? String(arrondi) : arrondi.toFixed(2).replace('.', ',');
+  return langue === 'ar' ? `وفر ${montant} Dhs` : `Économisez ${montant} Dhs`;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Gabarits par defaut                                                         */
 /* -------------------------------------------------------------------------- */
 
@@ -82,7 +167,7 @@ export function elementsParDefaut(): Record<CleElementAffiche, ElementAffiche> {
     desAR: { x: 0.95, y: 0.16, fs: 24, color: '#FFFFFF' },
     prixBarre: { x: 0.28, y: 0.33, fs: 30, color: '#FFAAAA' },
     prixPromo: { x: 0.5, y: 0.47, fs: 74, color: '#FFFFFF' },
-    diff: { x: 0.05, y: 0.58, fs: 22, color: '#FFE600' },
+    diff: { x: 0.05, y: 0.58, fs: 22, color: '#FFE600', bgColor: COULEUR_ECONOMIE_DEFAUT },
     fidelite: { x: 0.05, y: 0.72, fs: 20, color: '#F59E0B' },
     gencode: { x: 0.5, y: 0.91, fs: 8, color: '#FFFFFF' },
     picto: { x: 0.77, y: 0.27, w: 0.2, h: 0.14 },
@@ -95,6 +180,7 @@ export function gabaritsAfficheParDefaut(): GabaritAffiche[] {
   const e = elementsParDefaut;
   const g = (id: string, nom: string, bg: string, bg2: string, logo: boolean, els = e(), ordre = 0): GabaritAffiche => ({
     id, nom, bg, bg2, image: null, logo, els, ordre,
+    organigramme: { image: null, ...ORGANIGRAMME_DEFAUT },
   });
   return [
     g('MARJANE_BLEU', 'MARJANE BLEU', '#1a4da0', '#0d2d6b', true, e(), 1),
@@ -132,14 +218,16 @@ export async function preparerAffiche(
   pictos: ReadonlyMap<string, Picto>,
   parametres: Parametres,
 ): Promise<ContexteAffiche> {
-  const [fond, picto] = await Promise.all([
+  const [fond, picto, organigramme] = await Promise.all([
     chargerImage(gabarit.image),
     chargerImage(d.picto ? pictos.get(d.picto)?.image : null),
+    chargerImage(gabarit.organigramme?.image),
   ]);
   return {
     gabarit,
     fond,
     picto,
+    organigramme,
     entete: parametres.enteteAffiche,
     economie: calculerEconomie(d, parametres),
   };
@@ -186,13 +274,16 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
 
   ctx.save();
 
+  /* --- Designations : chaque zone ne recoit que sa langue (jamais de zone vide dessinee) --- */
+  const des = resoudreDesignations(d.desFR, d.desAR);
+
   /* --- Designation FR --- */
-  if (d.desFR) {
+  if (des.fr) {
     const e = elementEffectif(g, 'desFR');
     // Si la designation arabe suit, la francaise est reduite pour ne pas la chevaucher.
     const eAr = elementEffectif(g, 'desAR');
-    const dispo = d.desAR && eAr.y > e.y ? (eAr.y - e.y) * H : Infinity;
-    const texte = d.desFR.toUpperCase();
+    const dispo = des.ar && eAr.y > e.y ? (eAr.y - e.y) * H : Infinity;
+    const texte = des.fr.toUpperCase();
     let fz = e.fs ?? 34;
     const min = fz * 0.6;
     ctx.font = p900(fz);
@@ -212,7 +303,7 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
   }
 
   /* --- Designation AR --- */
-  if (d.desAR) {
+  if (des.ar) {
     const e = elementEffectif(g, 'desAR');
     const fz = e.fs ?? 24;
     ctx.fillStyle = e.color || '#FFFFFF';
@@ -222,7 +313,7 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
     ctx.textBaseline = 'top';
     ctx.shadowColor = 'rgba(0,0,0,0.6)';
     ctx.shadowBlur = flou(4);
-    couperLignes(ctx, d.desAR, W * 0.92, 2).forEach((l, i) => ctx.fillText(l, W / 2, e.y * H + i * fz * 1.3));
+    couperLignes(ctx, des.ar, W * 0.92, 2).forEach((l, i) => ctx.fillText(l, W / 2, e.y * H + i * fz * 1.3));
     ctx.shadowBlur = 0;
     ctx.direction = 'ltr';
   }
@@ -280,7 +371,9 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
     ctx.shadowBlur = 0;
   }
 
-  /* --- Economie « وفر » --- */
+  /* --- Economie « وفر » : rectangle bleu + organigramme + libelle ---
+   * Dessine uniquement si la regle commerciale l'autorise ET si l'ecart
+   * (prix barre − prix promo) est strictement positif. */
   if (rc.economie.afficher && rc.economie.ecart > 0) {
     const e = elementEffectif(g, 'diff');
     const rx = (e.diffRectX ?? RECT_ECONOMIE_DEFAUT.x) * W;
@@ -290,30 +383,32 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,0.4)';
     ctx.shadowBlur = flou(8);
-    ctx.fillStyle = e.bgColor || '#C8102E';
+    ctx.fillStyle = e.bgColor || COULEUR_ECONOMIE_DEFAUT;
     ctx.fillRect(rx, ry, rw, rh);
     ctx.restore();
-    const fzI = e.fs ?? 22;
-    const fzD = fzI * (e.decScale ?? 0.5);
-    const [ent, dec] = decouperMontant(rc.economie.ecart);
-    ctx.font = p900(fzI);
-    const iW = ctx.measureText(ent).width;
-    ctx.font = p900(fzD);
-    const suite = `,${dec} DH`;
-    const dW = ctx.measureText(suite).width;
-    const sx = rx + rw / 2 - (iW + dW) / 2;
-    const by = ry + rh / 2 + fzI * 0.35;
+
+    /* Organigramme : x, y, w, h en mm sur A4 (210 × 297) -> repere 420 × 594. */
+    if (rc.organigramme) {
+      const o = organigrammeEffectif(g);
+      ctx.drawImage(rc.organigramme, o.x * (W / 210), o.y * (H / 297), o.w * (W / 210), o.h * (H / 297));
+    }
+
+    // Libelle en francais si seule une designation francaise est affichee, sinon en arabe.
+    const langue = des.fr && !des.ar ? 'fr' : 'ar';
+    const libelle = libelleEconomie(rc.economie.ecart, langue);
+    const police = (fz: number) => (langue === 'ar' ? `900 ${fz}px ${POLICE_AR}` : p900(fz));
+    let fz = e.fs ?? 22;
+    ctx.font = police(fz);
+    while (fz > 8 && ctx.measureText(libelle).width > rw - 12) {
+      fz -= 1;
+      ctx.font = police(fz);
+    }
     ctx.fillStyle = e.color || '#FFE600';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
-    ctx.font = p900(fzI);
-    ctx.fillText(ent, sx, by);
-    ctx.font = p900(fzD);
-    ctx.fillText(suite, sx + iW, by - fzI * 0.35);
-    ctx.font = `900 ${rh * 0.38}px ${POLICE_AR}`;
-    ctx.textAlign = 'right';
+    ctx.direction = langue === 'ar' ? 'rtl' : 'ltr';
+    ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('وفر', rx + rw - 6, ry + rh / 2);
+    ctx.fillText(libelle, rx + rw / 2, ry + rh / 2);
+    ctx.direction = 'ltr';
   }
 
   /* --- Gain fidelite --- */

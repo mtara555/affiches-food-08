@@ -123,6 +123,27 @@ export interface ElementAffiche {
 
 export type CleElementAffiche = 'desFR' | 'desAR' | 'prixBarre' | 'prixPromo' | 'diff' | 'fidelite' | 'gencode' | 'picto';
 
+/**
+ * Langue detectee d'une designation (voir detecterLangueDesignation) :
+ * 'ar' = au moins un caractere arabe, 'fr' = latin / chiffres / ponctuation,
+ * 'mixte' = arabe ET lettres latines, 'vide' = rien apres trim.
+ */
+export type LangueDesignation = 'ar' | 'fr' | 'mixte' | 'vide';
+
+/**
+ * Organigramme de la zone economie (optionnel, retro-compatible).
+ * x, y, w, h sont en millimetres sur l'A4 de reference (210 × 297) ;
+ * le rendu les convertit pour A3 / A5 (homothetiques). Sans image : rien n'est dessine.
+ */
+export interface OrganigrammeAffiche {
+  /** Data URL de l'image importee, ou null (aucun organigramme). */
+  image: string | null;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface GabaritAffiche {
   readonly id: string;
   readonly nom: string;
@@ -132,6 +153,8 @@ export interface GabaritAffiche {
   /** Style « Marjane » : bandeau d en-tete jaune / bleu (fond sans image). */
   readonly logo: boolean;
   readonly els: Partial<Record<CleElementAffiche, ElementAffiche>>;
+  /** Organigramme de la zone economie ; absent sur les anciens gabarits (= aucun). */
+  readonly organigramme?: OrganigrammeAffiche;
   readonly ordre: number;
 }
 
