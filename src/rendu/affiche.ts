@@ -131,30 +131,42 @@ export function resoudreDesignations(desFR: string, desAR: string): { fr: string
 /* Zone economie : couleur, libelle, organigramme                              */
 /* -------------------------------------------------------------------------- */
 
-/** Bleu Marjane du rectangle economie (ancien rouge #C8102E). */
+/** Bleu Marjane du rectangle derriere les prix (ancien rouge #C8102E). */
 export const COULEUR_ECONOMIE_DEFAUT = '#004497';
 
-/** Zone « Organigramme1 » du depot AFFICHES-EM-supabase (mm sur A4 210 × 297). */
-export const ORGANIGRAMME_DEFAUT = { x: 28.0, y: 185.8, w: 152.0, h: 59.5 } as const;
+/** Rouge de l'organigramme. */
+export const COULEUR_ORGANIGRAMME_DEFAUT = '#FF0000';
 
-/** Organigramme effectif d'un gabarit : valeurs enregistrees completees par les defauts. */
+/** Pente du bord haut de l'organigramme (coin haut-gauche descendu de 20 % de la hauteur). */
+export const PENTE_ORGANIGRAMME_DEFAUT = 0.2;
+
+/** Organigramme (mm sur A4 210 × 297) : forme du modele TEST2910, 42,8 mm au-dessus du bas du rectangle bleu. */
+export const ORGANIGRAMME_DEFAUT = { x: 17.5, y: 123.5, w: 169.8, h: 67.7 } as const;
+
+/** Position horizontale du montant et de « وفر » dans l'organigramme (fraction de sa largeur). */
+const X_MONTANT = 0.357;
+const X_VOIR = 0.825;
+
+/** Organigramme effectif : valeurs enregistrees completees par les defauts. */
 export function organigrammeEffectif(g: GabaritAffiche): OrganigrammeAffiche {
-  return { image: null, ...ORGANIGRAMME_DEFAUT, ...(g.organigramme ?? {}) };
+  return {
+    image: null,
+    ...ORGANIGRAMME_DEFAUT,
+    couleur: COULEUR_ORGANIGRAMME_DEFAUT,
+    pente: PENTE_ORGANIGRAMME_DEFAUT,
+    ...(g.organigramme ?? {}),
+  };
 }
 
 /**
- * Libelle de la zone economie : « وفر X Dhs » (ar) ou « Économisez X Dhs » (fr).
- *
- * Entrees : ecart = prix barre − prix promo ; langue du libelle.
- * Sortie  : chaine prete a dessiner ; X sans decimales si l'ecart est entier
- *           (50 -> « 50 »), sinon deux decimales avec virgule (12,5 -> « 12,50 »).
+ * Texte du montant economise, au format du modele : « 50,00 dh ».
+ * Entree : ecart = prix barre − prix promo. Sortie : entier, virgule, 2 decimales, « dh ».
  * Cas limite : ecart <= 0 ou non fini -> '' (rien a afficher).
  */
-export function libelleEconomie(ecart: number, langue: 'ar' | 'fr'): string {
+export function montantEconomie(ecart: number): string {
   if (!Number.isFinite(ecart) || ecart <= 0) return '';
-  const arrondi = Math.round(ecart * 100) / 100;
-  const montant = Number.isInteger(arrondi) ? String(arrondi) : arrondi.toFixed(2).replace('.', ',');
-  return langue === 'ar' ? `وفر ${montant} Dhs` : `Économisez ${montant} Dhs`;
+  const [ent, dec] = decouperMontant(ecart);
+  return `${ent},${dec} dh`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -167,20 +179,21 @@ export function elementsParDefaut(): Record<CleElementAffiche, ElementAffiche> {
     desAR: { x: 0.95, y: 0.16, fs: 24, color: '#FFFFFF' },
     prixBarre: { x: 0.28, y: 0.33, fs: 30, color: '#FFAAAA' },
     prixPromo: { x: 0.5, y: 0.47, fs: 74, color: '#FFFFFF' },
-    diff: { x: 0.05, y: 0.58, fs: 22, color: '#FFE600', bgColor: COULEUR_ECONOMIE_DEFAUT },
+    diff: { x: 0.05, y: 0.58, fs: 30, color: '#FFE600', bgColor: COULEUR_ECONOMIE_DEFAUT },
     fidelite: { x: 0.05, y: 0.72, fs: 20, color: '#F59E0B' },
     gencode: { x: 0.5, y: 0.91, fs: 8, color: '#FFFFFF' },
     picto: { x: 0.77, y: 0.27, w: 0.2, h: 0.14 },
   };
 }
 
-export const RECT_ECONOMIE_DEFAUT = { x: 0.05, y: 0.55, w: 0.9, h: 0.105 };
+/** Rectangle bleu derriere les prix (fractions de la page) : forme du modele TEST2910, cale sur les prix par defaut. */
+export const RECT_ECONOMIE_DEFAUT = { x: 0.083, y: 0.28, w: 0.77, h: 0.28 };
 
 export function gabaritsAfficheParDefaut(): GabaritAffiche[] {
   const e = elementsParDefaut;
   const g = (id: string, nom: string, bg: string, bg2: string, logo: boolean, els = e(), ordre = 0): GabaritAffiche => ({
     id, nom, bg, bg2, image: null, logo, els, ordre,
-    organigramme: { image: null, ...ORGANIGRAMME_DEFAUT },
+    organigramme: { image: null, ...ORGANIGRAMME_DEFAUT, couleur: COULEUR_ORGANIGRAMME_DEFAUT, pente: PENTE_ORGANIGRAMME_DEFAUT },
   });
   return [
     g('MARJANE_BLEU', 'MARJANE BLEU', '#1a4da0', '#0d2d6b', true, e(), 1),
@@ -318,6 +331,40 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
     ctx.direction = 'ltr';
   }
 
+  /* --- Economie : fonds (organigramme rouge puis rectangle bleu), sous les prix ---
+   * Seulement si la regle commerciale l'autorise (AL >= 5 DH, NAL >= 10 %)
+   * ET si l'ecart (prix barre − prix promo) est strictement positif. */
+  const afficherEconomie = rc.economie.afficher && rc.economie.ecart > 0;
+  if (afficherEconomie) {
+    const e = elementEffectif(g, 'diff');
+    const o = organigrammeEffectif(g);
+    const ox = o.x * (W / 210);
+    const oy = o.y * (H / 297);
+    const ow = o.w * (W / 210);
+    const oh = o.h * (H / 297);
+    if (rc.organigramme) {
+      ctx.drawImage(rc.organigramme, ox, oy, ow, oh);
+    } else {
+      // Forme du modele : bord haut en biais (coin haut-gauche descendu de `pente` × h).
+      ctx.fillStyle = o.couleur || COULEUR_ORGANIGRAMME_DEFAUT;
+      ctx.beginPath();
+      ctx.moveTo(ox, oy + oh * (o.pente ?? PENTE_ORGANIGRAMME_DEFAUT));
+      ctx.lineTo(ox + ow, oy);
+      ctx.lineTo(ox + ow, oy + oh);
+      ctx.lineTo(ox, oy + oh);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // Rectangle bleu derriere les prix.
+    ctx.fillStyle = e.bgColor || COULEUR_ECONOMIE_DEFAUT;
+    ctx.fillRect(
+      (e.diffRectX ?? RECT_ECONOMIE_DEFAUT.x) * W,
+      (e.diffRectY ?? RECT_ECONOMIE_DEFAUT.y) * H,
+      (e.diffRectW ?? RECT_ECONOMIE_DEFAUT.w) * W,
+      (e.diffRectH ?? RECT_ECONOMIE_DEFAUT.h) * H,
+    );
+  }
+
   /* --- Prix barre (raye) --- */
   if (d.barre > 0) {
     const e = elementEffectif(g, 'prixBarre');
@@ -371,43 +418,27 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
     ctx.shadowBlur = 0;
   }
 
-  /* --- Economie « وفر » : rectangle bleu + organigramme + libelle ---
-   * Dessine uniquement si la regle commerciale l'autorise ET si l'ecart
-   * (prix barre − prix promo) est strictement positif. */
-  if (rc.economie.afficher && rc.economie.ecart > 0) {
+  /* --- Economie : montant et « وفر » dans l'organigramme (au-dessus du fond dessine plus haut) --- */
+  if (afficherEconomie) {
     const e = elementEffectif(g, 'diff');
-    const rx = (e.diffRectX ?? RECT_ECONOMIE_DEFAUT.x) * W;
-    const ry = (e.diffRectY ?? RECT_ECONOMIE_DEFAUT.y) * H;
-    const rw = (e.diffRectW ?? RECT_ECONOMIE_DEFAUT.w) * W;
-    const rh = (e.diffRectH ?? RECT_ECONOMIE_DEFAUT.h) * H;
-    ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.4)';
-    ctx.shadowBlur = flou(8);
-    ctx.fillStyle = e.bgColor || COULEUR_ECONOMIE_DEFAUT;
-    ctx.fillRect(rx, ry, rw, rh);
-    ctx.restore();
-
-    /* Organigramme : x, y, w, h en mm sur A4 (210 × 297) -> repere 420 × 594. */
-    if (rc.organigramme) {
-      const o = organigrammeEffectif(g);
-      ctx.drawImage(rc.organigramme, o.x * (W / 210), o.y * (H / 297), o.w * (W / 210), o.h * (H / 297));
-    }
-
-    // Libelle en francais si seule une designation francaise est affichee, sinon en arabe.
-    const langue = des.fr && !des.ar ? 'fr' : 'ar';
-    const libelle = libelleEconomie(rc.economie.ecart, langue);
-    const police = (fz: number) => (langue === 'ar' ? `900 ${fz}px ${POLICE_AR}` : p900(fz));
-    let fz = e.fs ?? 22;
-    ctx.font = police(fz);
-    while (fz > 8 && ctx.measureText(libelle).width > rw - 12) {
-      fz -= 1;
-      ctx.font = police(fz);
-    }
+    const o = organigrammeEffectif(g);
+    const ox = o.x * (W / 210);
+    const oy = o.y * (H / 297);
+    const ow = o.w * (W / 210);
+    const oh = o.h * (H / 297);
+    // Bande de texte : entre le bas du rectangle bleu et le bas de l'organigramme.
+    const basBleu = (e.diffRectY ?? RECT_ECONOMIE_DEFAUT.y) * H + (e.diffRectH ?? RECT_ECONOMIE_DEFAUT.h) * H;
+    const yTexte = (Math.min(Math.max(basBleu, oy), oy + oh) + oy + oh) / 2;
+    const fz = e.fs ?? 30;
     ctx.fillStyle = e.color || '#FFE600';
-    ctx.direction = langue === 'ar' ? 'rtl' : 'ltr';
-    ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(libelle, rx + rw / 2, ry + rh / 2);
+    ctx.textAlign = 'center';
+    ctx.direction = 'ltr';
+    ctx.font = p900(fz);
+    ctx.fillText(montantEconomie(rc.economie.ecart), ox + ow * X_MONTANT, yTexte);
+    ctx.direction = 'rtl';
+    ctx.font = `900 ${fz}px ${POLICE_AR}`;
+    ctx.fillText('وفر', ox + ow * X_VOIR, yTexte);
     ctx.direction = 'ltr';
   }
 

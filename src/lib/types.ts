@@ -131,13 +131,18 @@ export type CleElementAffiche = 'desFR' | 'desAR' | 'prixBarre' | 'prixPromo' | 
 export type LangueDesignation = 'ar' | 'fr' | 'mixte' | 'vide';
 
 /**
- * Organigramme de la zone economie (optionnel, retro-compatible).
+ * Organigramme de la zone economie (optionnel, retro-compatible) : forme rouge en biais
+ * (« Organigramme1 » du depot AFFICHES-EM-supabase) portant le montant economise et « وفر ».
  * x, y, w, h sont en millimetres sur l'A4 de reference (210 × 297) ;
- * le rendu les convertit pour A3 / A5 (homothetiques). Sans image : rien n'est dessine.
+ * le rendu les convertit pour A3 / A5 (homothetiques).
  */
 export interface OrganigrammeAffiche {
-  /** Data URL de l'image importee, ou null (aucun organigramme). */
+  /** Image importee qui REMPLACE la forme rouge (data URL), ou null. */
   image: string | null;
+  /** Couleur de la forme (defaut #FF0000). */
+  couleur?: string;
+  /** Pente du bord haut : fraction de h dont le coin haut-gauche est descendu (defaut 0,2). */
+  pente?: number;
   x: number;
   y: number;
   w: number;

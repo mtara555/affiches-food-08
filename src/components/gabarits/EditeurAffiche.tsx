@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react';
 import type { CleElementAffiche, ElementAffiche, GabaritAffiche, LangueDesignation, OrganigrammeAffiche } from '../../lib/types';
 import {
   COULEUR_ECONOMIE_DEFAUT,
+  COULEUR_ORGANIGRAMME_DEFAUT,
   detecterLangueDesignation,
   elementsParDefaut,
   ORGANIGRAMME_DEFAUT,
@@ -88,7 +89,8 @@ export function EditeurAffiche({ gabarit, nouveau, surEnregistrer, surFermer }: 
   function majOrg<K extends keyof OrganigrammeAffiche>(champ: K, v: OrganigrammeAffiche[K] | undefined) {
     setG((x) => {
       const courant = organigrammeEffectif(x);
-      const suivant = { ...courant, [champ]: v === undefined ? (champ === 'image' ? null : ORGANIGRAMME_DEFAUT[champ as 'x' | 'y' | 'w' | 'h']) : v };
+      const defaut = champ === 'image' ? null : champ === 'couleur' ? COULEUR_ORGANIGRAMME_DEFAUT : ORGANIGRAMME_DEFAUT[champ as 'x' | 'y' | 'w' | 'h'];
+      const suivant = { ...courant, [champ]: v === undefined ? defaut : v };
       return { ...x, organigramme: suivant as OrganigrammeAffiche };
     });
   }
@@ -166,14 +168,15 @@ export function EditeurAffiche({ gabarit, nouveau, surEnregistrer, surFermer }: 
                 <Curseur libelle="Rectangle — largeur" valeur={val('diff', 'diffRectW')} defaut={RECT_ECONOMIE_DEFAUT.w} min={0.1} max={1} pas={0.005} surChange={(v) => maj('diff', 'diffRectW', v)} />
                 <Curseur libelle="Rectangle — hauteur" valeur={val('diff', 'diffRectH')} defaut={RECT_ECONOMIE_DEFAUT.h} min={0.03} max={0.4} pas={0.005} surChange={(v) => maj('diff', 'diffRectH', v)} />
                 <Couleur libelle="Couleur du rectangle économie" valeur={g.els.diff?.bgColor} defaut={COULEUR_ECONOMIE_DEFAUT} surChange={(v) => maj('diff', 'bgColor', v)} />
-                <p className="sous-titre">Organigramme (mm sur A4 210 × 297)</p>
+                <p className="sous-titre">Organigramme rouge (mm sur A4 210 × 297)</p>
+                <Couleur libelle="Couleur de l'organigramme" valeur={g.organigramme?.couleur} defaut={COULEUR_ORGANIGRAMME_DEFAUT} surChange={(v) => majOrg('couleur', v)} />
                 <ChoixImage
                   image={org.image}
                   surChange={(image) => majOrg('image', image)}
                   coteMax={1200}
                   transparence
                   libelle="Importer l’organigramme"
-                  aide="Image PNG / JPEG / WebP dessinée dans la zone ci-dessous, uniquement quand le bandeau économie s’affiche."
+                  aide="Facultatif : remplace la forme rouge par une image PNG / JPEG / WebP, dans la même zone."
                 />
                 <Curseur libelle="Organigramme — x (mm)" valeur={g.organigramme?.x} defaut={ORGANIGRAMME_DEFAUT.x} min={0} max={210} pas={0.1} surChange={(v) => majOrg('x', v)} />
                 <Curseur libelle="Organigramme — y (mm)" valeur={g.organigramme?.y} defaut={ORGANIGRAMME_DEFAUT.y} min={0} max={297} pas={0.1} surChange={(v) => majOrg('y', v)} />
