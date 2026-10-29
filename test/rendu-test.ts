@@ -17,10 +17,21 @@ function fondA7(couleur: string): string {
 }
 
 const a7: GabaritA7[] = gabaritsA7ParDefaut().map((g) => (g.id === 'PAT' || g.id === 'B_FIL' ? { ...g, image: fondA7(g.id === 'PAT' ? '#7a3b10' : '#123a7a') } : g));
+/** Organigramme factice (PNG transparent) pour verifier le dessin dans la zone economie. */
+function organigrammeTest(): string {
+  const c = document.createElement('canvas'); c.width = 608; c.height = 238;
+  const x = c.getContext('2d')!;
+  x.strokeStyle = '#ffffff'; x.lineWidth = 6; x.fillStyle = 'rgba(255,255,255,0.18)';
+  x.fillRect(4, 4, 600, 230); x.strokeRect(4, 4, 600, 230);
+  x.fillStyle = '#ffffff'; x.font = 'bold 36px sans-serif'; x.fillText('ORGANIGRAMME', 150, 130);
+  return c.toDataURL('image/png');
+}
+const gabaritsAffiche = gabaritsAfficheParDefaut();
+const gabaritOrg = { ...gabaritsAffiche[0]!, id: 'MARJANE_BLEU_ORG', organigramme: { image: organigrammeTest(), x: 28.0, y: 185.8, w: 152.0, h: 59.5 } };
 const ref: Reference = {
   parametres: PARAMETRES_DEFAUT,
   mapA7: new Map(a7.map((g) => [g.id, g])),
-  mapAffiche: new Map(gabaritsAfficheParDefaut().map((g) => [g.id, g])),
+  mapAffiche: new Map([...gabaritsAffiche, gabaritOrg].map((g) => [g.id, g])),
   mapBalisage: new Map(gabaritsBalisageParDefaut().map((g) => [g.id, g])),
   mapPictos: new Map(),
 };
@@ -40,6 +51,14 @@ const cas: [TypeCampagne, SaisieElement][] = [
   ['AFFICHE', { code: '6111234567890', desFR: 'Huile de table Lesieur 5L', desAR: 'زيت المائدة 5 لتر', barre: 99.9, promo: 79.9, fidelite: 5, secteur: 'food', picto: '', gabarit: 'MARJANE_BLEU' }],
   ['AFFICHE', { code: '6111234567890', desFR: 'Téléviseur 55 pouces', desAR: 'تلفاز 55 بوصة', barre: 5999, promo: 4999, fidelite: 0, secteur: 'nonfood', picto: '', gabarit: 'MARJANE_JAUNE' }],
   ['AFFICHE', { code: '123', desFR: 'Yaourt', desAR: '', barre: 3, promo: 2.5, fidelite: 0, secteur: 'food', picto: '', gabarit: 'PROMO_ROUGE' }],
+  // Cas A : FR seul, ecart 50 -> rectangle bleu + organigramme + « Économisez 50 Dhs »
+  ['AFFICHE', { code: '6111234567890', desFR: 'Lait Candia 1L', desAR: '', barre: 200, promo: 150, fidelite: 0, secteur: 'food', picto: '', gabarit: 'MARJANE_BLEU_ORG' }],
+  // Cas B : AR seul, ecart 20 -> « وفر 20 Dhs »
+  ['AFFICHE', { code: '6111234567890', desFR: '', desAR: 'حليب كانديا 1 لتر', barre: 200, promo: 180, fidelite: 0, secteur: 'food', picto: '', gabarit: 'MARJANE_BLEU_ORG' }],
+  // Cas C : ecart 0 -> ni rectangle, ni organigramme, ni « وفر »
+  ['AFFICHE', { code: '6111234567890', desFR: 'Lait Candia 1L', desAR: '', barre: 200, promo: 200, fidelite: 0, secteur: 'food', picto: '', gabarit: 'MARJANE_BLEU_ORG' }],
+  // Cas D : designation vide -> aucune designation, mais bandeau + organigramme visibles
+  ['AFFICHE', { code: '6111234567890', desFR: '', desAR: '', barre: 200, promo: 150, fidelite: 0, secteur: 'food', picto: '', gabarit: 'MARJANE_BLEU_ORG' }],
   ['BALISAGE', { code: '', gabarit: 'BOUL', desFR: 'Pain complet aux céréales', desAR: 'خبز كامل بالحبوب', ingFR: 'Farine de BLÉ complète, eau, graines de SÉSAME, graines de lin, levure, sel, gluten.', ingAR: 'دقيق القمح الكامل، ماء، سمسم، بذور الكتان، خميرة، ملح' }],
   ['BALISAGE', { code: '', gabarit: 'PAT', desFR: 'Tarte aux fraises', desAR: 'تارت بالفراولة', ingFR: 'Pâte sablée (farine de BLÉ, beurre, OEUFS), crème pâtissière (LAIT), fraises.', ingAR: 'عجين، زبدة، بيض، حليب، فراولة' }],
 ];

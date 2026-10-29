@@ -11,7 +11,7 @@ import { notifier } from '../Notifications';
 import { useDonnees } from '../../context/DonneesContext';
 import { normaliserCode, trouverArticle } from '../../lib/articles';
 import type { ElementAfficheSaisi, Saisie } from '../../lib/types';
-import { calculerEconomie } from '../../rendu/affiche';
+import { calculerEconomie, detecterLangueDesignation } from '../../rendu/affiche';
 import { formaterPrix, versNombre } from '../../rendu/commun';
 import { messageErreur } from '../../lib/firebase';
 
@@ -20,6 +20,8 @@ interface Props {
   readonly surValider: (s: Saisie<ElementAfficheSaisi>) => Promise<void>;
   readonly surAnnuler: () => void;
 }
+
+const LIBELLE_LANGUE = { ar: 'Arabe', fr: 'Français', mixte: 'Mixte (arabe prioritaire)', vide: 'Vide' } as const;
 
 const CLE_GABARIT = 'affiches-food.dernier-gabarit-affiche';
 const CLE_SECTEUR = 'affiches-food.dernier-secteur';
@@ -160,8 +162,8 @@ export function FormulaireAffiche({ enEdition, surValider, surAnnuler }: Props) 
         ) : null}
 
         <div className="grille">
-          <ChampTexte id="af-desfr" libelle="Designation FR" valeur={desFR} surChange={setDesFR} maxLength={80} />
-          <ChampTexte id="af-desar" libelle="Designation AR" valeur={desAR} surChange={setDesAR} arabe sourceTraduction={desFR} maxLength={80} />
+          <ChampTexte id="af-desfr" libelle="Designation FR" valeur={desFR} surChange={setDesFR} maxLength={80} aide={`Langue détectée : ${LIBELLE_LANGUE[detecterLangueDesignation(desFR)]}`} />
+          <ChampTexte id="af-desar" libelle="Designation AR" valeur={desAR} surChange={setDesAR} arabe sourceTraduction={desFR} maxLength={80} aide={`Langue détectée : ${LIBELLE_LANGUE[detecterLangueDesignation(desAR)]}`} />
         </div>
 
         <div className="segments segments--large" role="group" aria-label="Secteur">

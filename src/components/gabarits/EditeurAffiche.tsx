@@ -4,8 +4,15 @@
  */
 
 import { useMemo, useState } from 'react';
-import type { CleElementAffiche, ElementAffiche, GabaritAffiche } from '../../lib/types';
-import { elementsParDefaut, RECT_ECONOMIE_DEFAUT } from '../../rendu/affiche';
+import type { CleElementAffiche, ElementAffiche, GabaritAffiche, LangueDesignation, OrganigrammeAffiche } from '../../lib/types';
+import {
+  COULEUR_ECONOMIE_DEFAUT,
+  detecterLangueDesignation,
+  elementsParDefaut,
+  ORGANIGRAMME_DEFAUT,
+  organigrammeEffectif,
+  RECT_ECONOMIE_DEFAUT,
+} from '../../rendu/affiche';
 import { useDonnees } from '../../context/DonneesContext';
 import { Apercu } from '../Apercu';
 import { ChoixImage, Couleur, Curseur } from './Reglages';
@@ -25,6 +32,13 @@ const ELEMENTS: readonly { cle: CleElementAffiche; libelle: string }[] = [
 const SANS_X: readonly CleElementAffiche[] = ['desFR', 'desAR', 'diff'];
 const SANS_TAILLE: readonly CleElementAffiche[] = ['gencode', 'picto'];
 
+const LIBELLE_LANGUE: Readonly<Record<LangueDesignation, string>> = {
+  ar: 'Arabe',
+  fr: 'Français',
+  mixte: 'Mixte (arabe prioritaire)',
+  vide: 'Vide',
+};
+
 interface Props {
   readonly gabarit: GabaritAffiche;
   readonly nouveau: boolean;
@@ -37,14 +51,17 @@ export function EditeurAffiche({ gabarit, nouveau, surEnregistrer, surFermer }: 
   const [g, setG] = useState<GabaritAffiche>(gabarit);
   const [ouvert, setOuvert] = useState<CleElementAffiche>('prixPromo');
   const [envoi, setEnvoi] = useState(false);
+  // Designations d'essai : l'apercu reflete la langue detectee et la zone utilisee.
+  const [essaiFr, setEssaiFr] = useState('Huile de table 5L');
+  const [essaiAr, setEssaiAr] = useState('زيت المائدة 5 لتر');
   const defauts = elementsParDefaut();
   const surcharge = useMemo(() => ({ affiche: g }), [g]);
 
   const exemple = useMemo(
     () => ({
       code: '6111234567890',
-      desFR: 'Huile de table 5L',
-      desAR: 'زيت المائدة 5 لتر',
+      desFR: essaiFr,
+      desAR: essaiAr,
       barre: 99.9,
       promo: 79.9,
       fidelite: 5,
@@ -52,7 +69,7 @@ export function EditeurAffiche({ gabarit, nouveau, surEnregistrer, surFermer }: 
       picto: pictos[0]?.id ?? '',
       gabarit: g.id,
     }),
-    [g.id, pictos],
+    [g.id, pictos, essaiFr, essaiAr],
   );
 
   function maj(cle: CleElementAffiche, champ: keyof ElementAffiche, v: number | string | undefined) {
@@ -65,6 +82,16 @@ export function EditeurAffiche({ gabarit, nouveau, surEnregistrer, surFermer }: 
   }
 
   const val = (cle: CleElementAffiche, champ: keyof ElementAffiche) => g.els[cle]?.[champ] as number | undefined;
+
+  const org = organigrammeEffectif(g);
+  /** Met a jour un champ de l'organigramme ; undefined = valeur par defaut. */
+  function majOrg<K extends keyof OrganigrammeAffiche>(champ: K, v: OrganigrammeAffiche[K] | undefined) {
+    setG((x) => {
+      const courant = organigrammeEffectif(x);
+      const suivant = { ...courant, [champ]: v === undefined ? (champ === 'image' ? null : ORGANIGRAMME_DEFAUT[champ as 'x' | 'y' | 'w' | 'h']) : v };
+      return { ...x, organigramme: suivant as OrganigrammeAffiche };
+    });
+  }
 
   return (
     <div className="modale" role="dialog" aria-modal="true">
@@ -118,7 +145,7 @@ export function EditeurAffiche({ gabarit, nouveau, surEnregistrer, surFermer }: 
             {!SANS_TAILLE.includes(ouvert) ? (
               <Curseur libelle="Taille" valeur={val(ouvert, 'fs')} defaut={defauts[ouvert].fs ?? 20} min={6} max={140} pas={1} surChange={(v) => maj(ouvert, 'fs', v)} />
             ) : null}
-            {ouvert === 'prixBarre' || ouvert === 'prixPromo' || ouvert === 'diff' || ouvert === 'fidelite' ? (
+            {ouvert === 'prixBarre' || ouvert === 'prixPromo' || ouvert === 'fidelite' ? (
               <Curseur
                 libelle="Taille decimales (rapport)"
                 valeur={val(ouvert, 'decScale')}
@@ -138,7 +165,20 @@ export function EditeurAffiche({ gabarit, nouveau, surEnregistrer, surFermer }: 
                 <Curseur libelle="Rectangle — haut" valeur={val('diff', 'diffRectY')} defaut={RECT_ECONOMIE_DEFAUT.y} min={0} max={1} pas={0.005} surChange={(v) => maj('diff', 'diffRectY', v)} />
                 <Curseur libelle="Rectangle — largeur" valeur={val('diff', 'diffRectW')} defaut={RECT_ECONOMIE_DEFAUT.w} min={0.1} max={1} pas={0.005} surChange={(v) => maj('diff', 'diffRectW', v)} />
                 <Curseur libelle="Rectangle — hauteur" valeur={val('diff', 'diffRectH')} defaut={RECT_ECONOMIE_DEFAUT.h} min={0.03} max={0.4} pas={0.005} surChange={(v) => maj('diff', 'diffRectH', v)} />
-                <Couleur libelle="Fond du rectangle" valeur={g.els.diff?.bgColor} defaut="#C8102E" surChange={(v) => maj('diff', 'bgColor', v)} />
+                <Couleur libelle="Couleur du rectangle économie" valeur={g.els.diff?.bgColor} defaut={COULEUR_ECONOMIE_DEFAUT} surChange={(v) => maj('diff', 'bgColor', v)} />
+                <p className="sous-titre">Organigramme (mm sur A4 210 × 297)</p>
+                <ChoixImage
+                  image={org.image}
+                  surChange={(image) => majOrg('image', image)}
+                  coteMax={1200}
+                  transparence
+                  libelle="Importer l’organigramme"
+                  aide="Image PNG / JPEG / WebP dessinée dans la zone ci-dessous, uniquement quand le bandeau économie s’affiche."
+                />
+                <Curseur libelle="Organigramme — x (mm)" valeur={g.organigramme?.x} defaut={ORGANIGRAMME_DEFAUT.x} min={0} max={210} pas={0.1} surChange={(v) => majOrg('x', v)} />
+                <Curseur libelle="Organigramme — y (mm)" valeur={g.organigramme?.y} defaut={ORGANIGRAMME_DEFAUT.y} min={0} max={297} pas={0.1} surChange={(v) => majOrg('y', v)} />
+                <Curseur libelle="Organigramme — largeur (mm)" valeur={g.organigramme?.w} defaut={ORGANIGRAMME_DEFAUT.w} min={5} max={210} pas={0.1} surChange={(v) => majOrg('w', v)} />
+                <Curseur libelle="Organigramme — hauteur (mm)" valeur={g.organigramme?.h} defaut={ORGANIGRAMME_DEFAUT.h} min={5} max={297} pas={0.1} surChange={(v) => majOrg('h', v)} />
               </>
             ) : null}
             {!SANS_TAILLE.includes(ouvert) ? (
@@ -150,6 +190,14 @@ export function EditeurAffiche({ gabarit, nouveau, surEnregistrer, surFermer }: 
         <div className="editeur__apercu">
           <Apercu type="AFFICHE" element={exemple} largeur={300} surcharge={surcharge} />
           <p className="champ__aide">Exemple Food : 99,90 → 79,90 DH, fidelite 5 %.</p>
+          <div className="champ">
+            <label htmlFor="essai-fr">Désignation d&apos;essai FR — détectée : {LIBELLE_LANGUE[detecterLangueDesignation(essaiFr)]}</label>
+            <input id="essai-fr" type="text" value={essaiFr} onChange={(e) => setEssaiFr(e.target.value)} />
+          </div>
+          <div className="champ">
+            <label htmlFor="essai-ar">Désignation d&apos;essai AR — détectée : {LIBELLE_LANGUE[detecterLangueDesignation(essaiAr)]}</label>
+            <input id="essai-ar" type="text" dir="rtl" lang="ar" value={essaiAr} onChange={(e) => setEssaiAr(e.target.value)} />
+          </div>
           <div className="actions-formulaire">
             <button
               type="button"
