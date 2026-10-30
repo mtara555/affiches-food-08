@@ -177,12 +177,27 @@ export function elementsParDefaut(): Record<CleElementAffiche, ElementAffiche> {
   return {
     desFR: { x: 0.05, y: 0.08, fs: 34, color: '#FFFFFF' },
     desAR: { x: 0.95, y: 0.16, fs: 24, color: '#FFFFFF' },
-    prixBarre: { x: 0.28, y: 0.33, fs: 30, color: '#FFAAAA' },
-    prixPromo: { x: 0.5, y: 0.47, fs: 74, color: '#FFFFFF' },
+    prixBarre: { x: 0.28, y: 0.33, fs: 40, color: '#FFAAAA' },
+    prixPromo: { x: 0.5, y: 0.47, fs: 110, color: '#FFFFFF' },
     diff: { x: 0.05, y: 0.58, fs: 30, color: '#FFE600', bgColor: COULEUR_ECONOMIE_DEFAUT },
     fidelite: { x: 0.05, y: 0.72, fs: 20, color: '#F59E0B' },
     gencode: { x: 0.5, y: 0.91, fs: 8, color: '#FFFFFF' },
     picto: { x: 0.77, y: 0.27, w: 0.2, h: 0.14 },
+  };
+}
+
+/**
+ * Rectangle bleu effectif en pixels du canvas (repere W × H).
+ * Entrees : gabarit, largeur et hauteur du canvas. Sortie : { x, y, w, h }.
+ * Les prix (barre et promo) sont positionnes automatiquement a l'interieur de ce rectangle.
+ */
+export function rectangleBleuPx(g: GabaritAffiche, W: number, H: number): { x: number; y: number; w: number; h: number } {
+  const e = elementEffectif(g, 'diff');
+  return {
+    x: (e.diffRectX ?? RECT_ECONOMIE_DEFAUT.x) * W,
+    y: (e.diffRectY ?? RECT_ECONOMIE_DEFAUT.y) * H,
+    w: (e.diffRectW ?? RECT_ECONOMIE_DEFAUT.w) * W,
+    h: (e.diffRectH ?? RECT_ECONOMIE_DEFAUT.h) * H,
   };
 }
 
@@ -331,38 +346,38 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
     ctx.direction = 'ltr';
   }
 
-  /* --- Economie : fonds (organigramme rouge puis rectangle bleu), sous les prix ---
-   * Seulement si la regle commerciale l'autorise (AL >= 5 DH, NAL >= 10 %)
-   * ET si l'ecart (prix barre − prix promo) est strictement positif. */
+  /* --- Fonds : organigramme rouge (seulement si l'economie est affichee) puis rectangle bleu (toujours) ---
+   * Le rectangle bleu est le fond des prix : il reste affiche meme sans economie, sinon les prix
+   * (souvent blancs) deviennent illisibles. L'organigramme rouge, le montant et « وفر » ne sont
+   * dessines que si la regle commerciale l'autorise (AL >= 5 DH, NAL >= 10 %) ET si l'ecart
+   * (prix barre − prix promo) est strictement positif. */
   const afficherEconomie = rc.economie.afficher && rc.economie.ecart > 0;
-  if (afficherEconomie) {
+  const rb = rectangleBleuPx(g, W, H);
+  {
     const e = elementEffectif(g, 'diff');
-    const o = organigrammeEffectif(g);
-    const ox = o.x * (W / 210);
-    const oy = o.y * (H / 297);
-    const ow = o.w * (W / 210);
-    const oh = o.h * (H / 297);
-    if (rc.organigramme) {
-      ctx.drawImage(rc.organigramme, ox, oy, ow, oh);
-    } else {
-      // Forme du modele : bord haut en biais (coin haut-gauche descendu de `pente` × h).
-      ctx.fillStyle = o.couleur || COULEUR_ORGANIGRAMME_DEFAUT;
-      ctx.beginPath();
-      ctx.moveTo(ox, oy + oh * (o.pente ?? PENTE_ORGANIGRAMME_DEFAUT));
-      ctx.lineTo(ox + ow, oy);
-      ctx.lineTo(ox + ow, oy + oh);
-      ctx.lineTo(ox, oy + oh);
-      ctx.closePath();
-      ctx.fill();
+    if (afficherEconomie) {
+      const o = organigrammeEffectif(g);
+      const ox = o.x * (W / 210);
+      const oy = o.y * (H / 297);
+      const ow = o.w * (W / 210);
+      const oh = o.h * (H / 297);
+      if (rc.organigramme) {
+        ctx.drawImage(rc.organigramme, ox, oy, ow, oh);
+      } else {
+        // Forme du modele : bord haut en biais (coin haut-gauche descendu de `pente` × h).
+        ctx.fillStyle = o.couleur || COULEUR_ORGANIGRAMME_DEFAUT;
+        ctx.beginPath();
+        ctx.moveTo(ox, oy + oh * (o.pente ?? PENTE_ORGANIGRAMME_DEFAUT));
+        ctx.lineTo(ox + ow, oy);
+        ctx.lineTo(ox + ow, oy + oh);
+        ctx.lineTo(ox, oy + oh);
+        ctx.closePath();
+        ctx.fill();
+      }
     }
     // Rectangle bleu derriere les prix.
     ctx.fillStyle = e.bgColor || COULEUR_ECONOMIE_DEFAUT;
-    ctx.fillRect(
-      (e.diffRectX ?? RECT_ECONOMIE_DEFAUT.x) * W,
-      (e.diffRectY ?? RECT_ECONOMIE_DEFAUT.y) * H,
-      (e.diffRectW ?? RECT_ECONOMIE_DEFAUT.w) * W,
-      (e.diffRectH ?? RECT_ECONOMIE_DEFAUT.h) * H,
-    );
+    ctx.fillRect(rb.x, rb.y, rb.w, rb.h);
   }
 
   /* --- Prix barre (raye) --- */
@@ -379,8 +394,9 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
     ctx.font = p900(fzD);
     const suite = `,${dec} DH`;
     const total = iW + ctx.measureText(suite).width;
-    const bx = e.x * W;
-    const by = e.y * H;
+    // Position automatique : coin haut-gauche du rectangle bleu.
+    const bx = rb.x + rb.w * 0.04;
+    const by = rb.y + rb.h * 0.06 + fzI * 0.85;
     ctx.font = p900(fzI);
     ctx.fillText(ent, bx, by);
     ctx.font = p900(fzD);
@@ -397,15 +413,22 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
   if (d.promo > 0) {
     const e = elementEffectif(g, 'prixPromo');
     const [ent, dec] = decouperMontant(d.promo);
-    const fzI = e.fs ?? 74;
-    const fzD = fzI * (e.decScale ?? 0.38);
-    ctx.font = p900(fzI);
-    const iW = ctx.measureText(ent).width;
-    ctx.font = p900(fzD);
     const suite = `,${dec} DH`;
-    const total = iW + ctx.measureText(suite).width;
-    const sx = e.x * W - total / 2;
-    const by = e.y * H + fzI * 0.35;
+    const ratio = e.decScale ?? 0.38;
+    // La taille reglee est un maximum : reduite si le prix deborde du rectangle bleu.
+    let fzI = e.fs ?? 110;
+    const largeur = (taille: number) => {
+      ctx.font = p900(taille);
+      const w1 = ctx.measureText(ent).width;
+      ctx.font = p900(taille * ratio);
+      return { iW: w1, total: w1 + ctx.measureText(suite).width };
+    };
+    while (fzI > 10 && largeur(fzI).total > rb.w * 0.94) fzI -= 1;
+    const fzD = fzI * ratio;
+    const { iW, total } = largeur(fzI);
+    // Position automatique : centre horizontal du rectangle, sous le prix barre.
+    const sx = rb.x + rb.w / 2 - total / 2;
+    const by = rb.y + rb.h * 0.64 + fzI * 0.36;
     ctx.shadowColor = 'rgba(0,0,0,0.9)';
     ctx.shadowBlur = flou(14);
     ctx.fillStyle = e.color || '#FFFFFF';
