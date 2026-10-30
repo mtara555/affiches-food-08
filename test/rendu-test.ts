@@ -45,7 +45,7 @@ const cas: [TypeCampagne, SaisieElement][] = [
   ['AFFICHE', { code: '6111234567890', desFR: 'Lait Candia 1L', desAR: '', barre: 200, promo: 150, fidelite: 0, secteur: 'food', picto: '', gabarit: 'MARJANE_BLEU' }],
   // Cas B : AR seul, ecart 20 -> « وفر 20 Dhs »
   ['AFFICHE', { code: '6111234567890', desFR: '', desAR: 'حليب كانديا 1 لتر', barre: 200, promo: 180, fidelite: 0, secteur: 'food', picto: '', gabarit: 'MARJANE_BLEU' }],
-  // Cas C : ecart 0 -> ni rectangle, ni organigramme, ni « وفر »
+  // Cas C : ecart 0 -> rectangle bleu seul (fond des prix), ni organigramme, ni montant, ni « وفر »
   ['AFFICHE', { code: '6111234567890', desFR: 'Lait Candia 1L', desAR: '', barre: 200, promo: 200, fidelite: 0, secteur: 'food', picto: '', gabarit: 'MARJANE_BLEU' }],
   // Cas D : designation vide -> aucune designation, mais bandeau + organigramme visibles
   ['AFFICHE', { code: '6111234567890', desFR: '', desAR: '', barre: 200, promo: 150, fidelite: 0, secteur: 'food', picto: '', gabarit: 'MARJANE_BLEU' }],

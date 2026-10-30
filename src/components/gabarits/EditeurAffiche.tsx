@@ -30,7 +30,9 @@ const ELEMENTS: readonly { cle: CleElementAffiche; libelle: string }[] = [
 ];
 
 /** Elements centres horizontalement (la position X n'est pas utilisee). */
-const SANS_X: readonly CleElementAffiche[] = ['desFR', 'desAR', 'diff'];
+const SANS_X: readonly CleElementAffiche[] = ['desFR', 'desAR', 'diff', 'prixBarre', 'prixPromo'];
+/** Elements sans curseur vertical : 'diff' (rectangle) et les prix, places automatiquement dans le rectangle bleu. */
+const SANS_Y: readonly CleElementAffiche[] = ['diff', 'prixBarre', 'prixPromo'];
 const SANS_TAILLE: readonly CleElementAffiche[] = ['gencode', 'picto'];
 
 const LIBELLE_LANGUE: Readonly<Record<LangueDesignation, string>> = {
@@ -141,7 +143,10 @@ export function EditeurAffiche({ gabarit, nouveau, surEnregistrer, surFermer }: 
             {!SANS_X.includes(ouvert) ? (
               <Curseur libelle="Position horizontale" valeur={val(ouvert, 'x')} defaut={defauts[ouvert].x} min={0} max={1} pas={0.005} surChange={(v) => maj(ouvert, 'x', v)} />
             ) : null}
-            {ouvert !== 'diff' ? (
+            {ouvert === 'prixBarre' || ouvert === 'prixPromo' ? (
+              <p className="champ__aide">Position automatique dans le rectangle bleu (déplacez le rectangle dans l&apos;onglet Economie). La taille est un maximum : le prix est réduit s&apos;il déborde.</p>
+            ) : null}
+            {!SANS_Y.includes(ouvert) ? (
               <Curseur libelle="Position verticale" valeur={val(ouvert, 'y')} defaut={defauts[ouvert].y} min={0} max={1} pas={0.005} surChange={(v) => maj(ouvert, 'y', v)} />
             ) : null}
             {!SANS_TAILLE.includes(ouvert) ? (
