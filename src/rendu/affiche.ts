@@ -21,6 +21,7 @@ import type {
   Saisie,
 } from '../lib/types';
 import { assombrir, chargerImage, couperLignes, decouperMontant, POLICE, POLICE_AR, preparerCanevas } from './commun';
+import { sourcePicto, tailleEffective } from './detourage';
 import { dessinerCode39, largeurCode39, nettoyerCode39 } from './code39';
 
 export const AF_L = 420;
@@ -31,7 +32,10 @@ export type DonneesAffiche = Saisie<ElementAfficheSaisi>;
 export interface ContexteAffiche {
   readonly gabarit: GabaritAffiche;
   readonly fond: HTMLImageElement | null;
-  readonly picto: HTMLImageElement | null;
+  /** Picto pret a dessiner (image d'origine ou version sans fond). */
+  readonly picto: CanvasImageSource | null;
+  /** Coefficient de taille propre au picto (1 = taille du gabarit). */
+  readonly pictoTaille: number;
   /** Image de l'organigramme (zone economie) ; null = aucun / echec de chargement. */
   readonly organigramme: HTMLImageElement | null;
   readonly entete: string;
@@ -246,15 +250,17 @@ export async function preparerAffiche(
   pictos: ReadonlyMap<string, Picto>,
   parametres: Parametres,
 ): Promise<ContexteAffiche> {
+  const pictoRef = d.picto ? pictos.get(d.picto) : undefined;
   const [fond, picto, organigramme] = await Promise.all([
     chargerImage(gabarit.image),
-    chargerImage(d.picto ? pictos.get(d.picto)?.image : null),
+    sourcePicto(pictoRef),
     chargerImage(gabarit.organigramme?.image),
   ]);
   return {
     gabarit,
     fond,
     picto,
+    pictoTaille: tailleEffective(pictoRef),
     organigramme,
     entete: parametres.enteteAffiche,
     economie: calculerEconomie(d, parametres),
@@ -515,7 +521,8 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
   /* --- Picto (5 × 3 cm) --- */
   if (rc.picto) {
     const e = elementEffectif(g, 'picto');
-    const pw = (e.w ?? 0.2) * W;
+    // Largeur du gabarit x coefficient propre au picto (centre conserve).
+    const pw = (e.w ?? 0.2) * W * rc.pictoTaille;
     const ph = pw * (3 / 5);
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,0.25)';

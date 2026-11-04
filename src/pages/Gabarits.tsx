@@ -5,6 +5,7 @@ import { notifier } from '../components/Notifications';
 import { EditeurA7 } from '../components/gabarits/EditeurA7';
 import { EditeurAffiche } from '../components/gabarits/EditeurAffiche';
 import { EditeurBalisage } from '../components/gabarits/EditeurBalisage';
+import { EditeurPicto, MiniaturePicto } from '../components/gabarits/EditeurPicto';
 import { useDonnees } from '../context/DonneesContext';
 import {
   enregistrerGabaritA7,
@@ -18,8 +19,9 @@ import {
   supprimerPicto,
 } from '../lib/gabarits';
 import { compresserImage, poids } from '../lib/images';
-import type { GabaritA7, GabaritAffiche, GabaritBalisage } from '../lib/types';
+import type { GabaritA7, GabaritAffiche, GabaritBalisage, Picto } from '../lib/types';
 import { elementsParDefaut } from '../rendu/affiche';
+import { tailleEffective } from '../rendu/detourage';
 import { GABARITS_A7_FIDELITE } from '../config/constants';
 import { messageErreur } from '../lib/firebase';
 import { tracer } from '../lib/journal';
@@ -55,6 +57,7 @@ export function Gabarits() {
   const [affiche, setAffiche] = useState<{ g: GabaritAffiche; nouveau: boolean } | null>(null);
   const [balisage, setBalisage] = useState<{ g: GabaritBalisage; nouveau: boolean } | null>(null);
   const [envoiPicto, setEnvoiPicto] = useState(false);
+  const [pictoEdite, setPictoEdite] = useState<Picto | null>(null);
 
   async function executer(action: () => Promise<unknown>, message: string, journal: string) {
     try {
@@ -246,9 +249,15 @@ export function Gabarits() {
           <div className="galerie galerie--pictos">
             {d.pictos.map((p) => (
               <div key={p.id} className="galerie__carte">
-                <img src={p.image} alt="" className="galerie__picto" />
+                <MiniaturePicto picto={p} />
                 <span className="galerie__nom">{p.nom}</span>
+                <span className="galerie__detail">
+                  Taille {Math.round(tailleEffective(p) * 100)} %{p.sansFond ? ' · sans fond' : ''}
+                </span>
                 <div className="galerie__actions">
+                  <button type="button" className="bouton bouton--principal bouton--petit" onClick={() => setPictoEdite(p)}>
+                    Regler
+                  </button>
                   <button
                     type="button"
                     className="bouton bouton--discret bouton--petit"
@@ -275,6 +284,16 @@ export function Gabarits() {
         </section>
       ) : null}
 
+      {pictoEdite ? (
+        <EditeurPicto
+          picto={pictoEdite}
+          surFermer={() => setPictoEdite(null)}
+          surEnregistrer={async (p) => {
+            const detail = `taille ${Math.round(tailleEffective(p) * 100)} %, fond ${p.sansFond ? 'retire' : 'conserve'}`;
+            if (await executer(() => enregistrerPicto(p), 'Picto enregistre.', `Picto « ${p.nom} » regle (${detail})`)) setPictoEdite(null);
+          }}
+        />
+      ) : null}
       {a7 ? (
         <EditeurA7
           gabarit={a7}

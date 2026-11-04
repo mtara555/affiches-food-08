@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import type { ParametresVrac, TypeCampagne } from '../config/constants';
-import type { Element, GabaritA7, GabaritAffiche, GabaritBalisage, Parametres, SaisieElement } from '../lib/types';
+import type { Element, GabaritA7, GabaritAffiche, GabaritBalisage, Parametres, Picto, SaisieElement } from '../lib/types';
 import { useDonnees } from '../context/DonneesContext';
 import { dessinerElement, dimensionsRendu, type Reference } from '../rendu';
 import './Apercu.css';
@@ -26,6 +26,8 @@ interface Props {
     readonly affiche?: GabaritAffiche;
     readonly balisage?: GabaritBalisage;
     readonly parametres?: Parametres;
+    /** Pictos en cours d'edition (remplacent ceux enregistres). */
+    readonly pictos?: ReadonlyMap<string, Picto>;
   };
 }
 
@@ -48,7 +50,7 @@ export function Apercu({ type, element, largeur, className, titre, surcharge, vr
             mapA7: avec(base.mapA7, surcharge.a7),
             mapAffiche: avec(base.mapAffiche, surcharge.affiche),
             mapBalisage: avec(base.mapBalisage, surcharge.balisage),
-            mapPictos: base.mapPictos,
+            mapPictos: surcharge.pictos ?? base.mapPictos,
           }
         : base,
     [base, surcharge],
