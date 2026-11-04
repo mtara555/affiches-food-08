@@ -13,8 +13,8 @@
 import type { Picto } from '../lib/types';
 import { chargerImage } from './commun';
 
-/** Coefficient de taille d'un picto (1 = taille definie par le gabarit d'affiche). */
-export const PICTO_TAILLE = { min: 0.5, max: 2, defaut: 1, pas: 0.05 } as const;
+/** Coefficient de largeur ou de hauteur d'un picto (1 = taille definie par le gabarit d'affiche). */
+export const PICTO_TAILLE = { min: 0.3, max: 2.5, defaut: 1, pas: 0.05 } as const;
 
 /** Tolerance de detourage : ecart de blanc accepte (0 = blanc pur uniquement). */
 export const PICTO_TOLERANCE = { min: 0, max: 60, defaut: 20, pas: 1 } as const;
@@ -27,6 +27,12 @@ const borne = (v: number, min: number, max: number) => Math.min(max, Math.max(mi
 export function tailleEffective(p: Pick<Picto, 'taille'> | undefined): number {
   const t = p?.taille;
   return typeof t === 'number' && Number.isFinite(t) ? borne(t, PICTO_TAILLE.min, PICTO_TAILLE.max) : PICTO_TAILLE.defaut;
+}
+
+/** Coefficient de hauteur : celui du picto, ou — a defaut — celui de la largeur (proportions conservees). */
+export function hauteurEffective(p: Pick<Picto, 'taille' | 'hauteur'> | undefined): number {
+  const h = p?.hauteur;
+  return typeof h === 'number' && Number.isFinite(h) ? borne(h, PICTO_TAILLE.min, PICTO_TAILLE.max) : tailleEffective(p);
 }
 
 export function toleranceEffective(p: Pick<Picto, 'tolerance'> | undefined): number {

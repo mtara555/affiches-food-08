@@ -6,11 +6,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Picto } from '../../lib/types';
 import { useDonnees } from '../../context/DonneesContext';
-import { dimensionsSource, PICTO_TAILLE, PICTO_TOLERANCE, sourcePicto, tailleEffective } from '../../rendu/detourage';
+import { chargerImage } from '../../rendu/commun';
+import { dimensionsSource, hauteurEffective, PICTO_TAILLE, PICTO_TOLERANCE, sourcePicto, tailleEffective } from '../../rendu/detourage';
 import { Apercu } from '../Apercu';
 import { Curseur } from './Reglages';
 
-/** Raccourcis de taille (coefficient). */
+/** Raccourcis de taille (appliques a la largeur ; la hauteur suit si les proportions sont liees). */
 const PRESETS: readonly { libelle: string; valeur: number }[] = [
   { libelle: 'Petit', valeur: 0.7 },
   { libelle: 'Moyen', valeur: 1 },
@@ -56,6 +57,9 @@ export function EditeurPicto({ picto, surEnregistrer, surFermer }: Props) {
   const d = useDonnees();
   // undefined = valeur par defaut (rien n'est ecrit dans Firestore).
   const [taille, setTaille] = useState<number | undefined>(picto.taille);
+  // Proportions liees = la hauteur suit la largeur (aucune hauteur stockee).
+  const [lie, setLie] = useState<boolean>(picto.hauteur === undefined);
+  const [hauteur, setHauteur] = useState<number | undefined>(picto.hauteur);
   const [sansFond, setSansFond] = useState<boolean>(picto.sansFond === true);
   const [tolerance, setTolerance] = useState<number | undefined>(picto.tolerance);
   const [gabaritId, setGabaritId] = useState<string>(d.gabaritsAffiche[0]?.id ?? '');
@@ -68,10 +72,12 @@ export function EditeurPicto({ picto, surEnregistrer, surFermer }: Props) {
       image: picto.image,
       // Les valeurs par defaut ne sont pas stockees : un picto « neutre » reste identique a un ancien picto.
       ...(taille !== undefined && taille !== PICTO_TAILLE.defaut ? { taille } : {}),
+      // Hauteur independante : stockee seulement quand les proportions sont deliees.
+      ...(!lie ? { hauteur: hauteur ?? PICTO_TAILLE.defaut } : {}),
       ...(sansFond ? { sansFond: true } : {}),
       ...(sansFond && tolerance !== undefined && tolerance !== PICTO_TOLERANCE.defaut ? { tolerance } : {}),
     }),
-    [picto.id, picto.nom, picto.image, taille, sansFond, tolerance],
+    [picto.id, picto.nom, picto.image, taille, lie, hauteur, sansFond, tolerance],
   );
 
   const surcharge = useMemo(() => ({ pictos: new Map(d.mapPictos).set(edite.id, edite) }), [d.mapPictos, edite]);
@@ -91,6 +97,25 @@ export function EditeurPicto({ picto, surEnregistrer, surFermer }: Props) {
   );
 
   const pourcent = Math.round(tailleEffective(edite) * 100);
+  const pourcentH = Math.round(hauteurEffective(edite) * 100);
+
+  function changerLiaison(lier: boolean) {
+    setLie(lier);
+    // Deliement : la hauteur part de la valeur courante de la largeur (aucun saut visible).
+    if (!lier) setHauteur(taille ?? PICTO_TAILLE.defaut);
+  }
+
+  /** Hauteur qui donne au picto les proportions de son image (supprime la deformation). */
+  async function proportionsOrigine() {
+    const img = await chargerImage(picto.image);
+    if (!img || !img.naturalHeight) return;
+    const ratioImage = img.naturalWidth / img.naturalHeight;
+    const l = taille ?? PICTO_TAILLE.defaut;
+    // La boite de base est 5 x 3 : largeur = l, hauteur = h x 3/5 (en unites de largeur de base).
+    const h = l / ((3 / 5) * ratioImage);
+    setLie(false);
+    setHauteur(Math.min(PICTO_TAILLE.max, Math.max(PICTO_TAILLE.min, Math.round(h * 100) / 100)));
+  }
 
   async function enregistrer() {
     setEnvoi(true);
@@ -108,9 +133,13 @@ export function EditeurPicto({ picto, surEnregistrer, surFermer }: Props) {
           <h2 className="modale__titre">Picto « {picto.nom} »</h2>
 
           <fieldset className="editeur__groupe">
-            <legend>Taille</legend>
+            <legend>Largeur et hauteur</legend>
+            <label className="case">
+              <input type="checkbox" checked={lie} onChange={(e) => changerLiaison(e.target.checked)} />
+              Conserver les proportions (la hauteur suit la largeur)
+            </label>
             <Curseur
-              libelle="Coefficient (1 = taille du gabarit)"
+              libelle="Largeur (1 = taille du gabarit)"
               valeur={taille}
               defaut={PICTO_TAILLE.defaut}
               min={PICTO_TAILLE.min}
@@ -118,6 +147,17 @@ export function EditeurPicto({ picto, surEnregistrer, surFermer }: Props) {
               pas={PICTO_TAILLE.pas}
               surChange={setTaille}
             />
+            {!lie ? (
+              <Curseur
+                libelle="Hauteur (1 = taille du gabarit)"
+                valeur={hauteur}
+                defaut={PICTO_TAILLE.defaut}
+                min={PICTO_TAILLE.min}
+                max={PICTO_TAILLE.max}
+                pas={PICTO_TAILLE.pas}
+                surChange={setHauteur}
+              />
+            ) : null}
             <div className="galerie__actions">
               {PRESETS.map((p) => (
                 <button
@@ -130,8 +170,14 @@ export function EditeurPicto({ picto, surEnregistrer, surFermer }: Props) {
                 </button>
               ))}
             </div>
+            <div className="galerie__actions">
+              <button type="button" className="bouton bouton--discret bouton--petit" onClick={() => void proportionsOrigine()}>
+                Proportions de l&apos;image d&apos;origine
+              </button>
+            </div>
             <p className="champ__aide">
-              Taille actuelle : {pourcent} %. Elle s&apos;applique a la largeur reglee dans chaque gabarit d&apos;affiche (onglet Picto), centre conserve.
+              Largeur {pourcent} % · Hauteur {pourcentH} %. S&apos;applique a la boite 5 × 3 reglee dans chaque gabarit d&apos;affiche (onglet Picto), centre
+              conserve. Si le picto parait deforme, utilisez « Proportions de l&apos;image d&apos;origine ».
             </p>
           </fieldset>
 

@@ -21,7 +21,7 @@ import {
 import { compresserImage, poids } from '../lib/images';
 import type { GabaritA7, GabaritAffiche, GabaritBalisage, Picto } from '../lib/types';
 import { elementsParDefaut } from '../rendu/affiche';
-import { tailleEffective } from '../rendu/detourage';
+import { hauteurEffective, tailleEffective } from '../rendu/detourage';
 import { GABARITS_A7_FIDELITE } from '../config/constants';
 import { messageErreur } from '../lib/firebase';
 import { tracer } from '../lib/journal';
@@ -252,7 +252,10 @@ export function Gabarits() {
                 <MiniaturePicto picto={p} />
                 <span className="galerie__nom">{p.nom}</span>
                 <span className="galerie__detail">
-                  Taille {Math.round(tailleEffective(p) * 100)} %{p.sansFond ? ' · sans fond' : ''}
+                  {Math.round(tailleEffective(p) * 100) === Math.round(hauteurEffective(p) * 100)
+                    ? `Taille ${Math.round(tailleEffective(p) * 100)} %`
+                    : `L ${Math.round(tailleEffective(p) * 100)} % × H ${Math.round(hauteurEffective(p) * 100)} %`}
+                  {p.sansFond ? ' · sans fond' : ''}
                 </span>
                 <div className="galerie__actions">
                   <button type="button" className="bouton bouton--principal bouton--petit" onClick={() => setPictoEdite(p)}>
@@ -289,7 +292,7 @@ export function Gabarits() {
           picto={pictoEdite}
           surFermer={() => setPictoEdite(null)}
           surEnregistrer={async (p) => {
-            const detail = `taille ${Math.round(tailleEffective(p) * 100)} %, fond ${p.sansFond ? 'retire' : 'conserve'}`;
+            const detail = `largeur ${Math.round(tailleEffective(p) * 100)} %, hauteur ${Math.round(hauteurEffective(p) * 100)} %, fond ${p.sansFond ? 'retire' : 'conserve'}`;
             if (await executer(() => enregistrerPicto(p), 'Picto enregistre.', `Picto « ${p.nom} » regle (${detail})`)) setPictoEdite(null);
           }}
         />

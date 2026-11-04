@@ -187,8 +187,13 @@ export interface Picto {
   readonly id: string;
   readonly nom: string;
   readonly image: string;
-  /** Coefficient de taille (0,5 a 2 ; absent = 1) applique a la largeur definie par le gabarit d'affiche. */
+  /** Coefficient de largeur (0,3 a 2,5 ; absent = 1) applique a la largeur definie par le gabarit d'affiche. */
   readonly taille?: number;
+  /**
+   * Coefficient de hauteur (meme echelle que `taille`). Absent = suit `taille`
+   * (proportions conservees, comportement d'origine). Present = hauteur independante.
+   */
+  readonly hauteur?: number;
   /** Retire le fond blanc a l'affichage (l'image d'origine n'est pas modifiee). */
   readonly sansFond?: boolean;
   /** Tolerance du detourage (0 a 60 ; absent = valeur par defaut). */

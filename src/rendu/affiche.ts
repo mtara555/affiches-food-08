@@ -21,7 +21,7 @@ import type {
   Saisie,
 } from '../lib/types';
 import { assombrir, chargerImage, couperLignes, decouperMontant, POLICE, POLICE_AR, preparerCanevas } from './commun';
-import { sourcePicto, tailleEffective } from './detourage';
+import { hauteurEffective, sourcePicto, tailleEffective } from './detourage';
 import { dessinerCode39, largeurCode39, nettoyerCode39 } from './code39';
 
 export const AF_L = 420;
@@ -34,8 +34,8 @@ export interface ContexteAffiche {
   readonly fond: HTMLImageElement | null;
   /** Picto pret a dessiner (image d'origine ou version sans fond). */
   readonly picto: CanvasImageSource | null;
-  /** Coefficient de taille propre au picto (1 = taille du gabarit). */
-  readonly pictoTaille: number;
+  /** Coefficients de largeur et de hauteur propres au picto (1 = taille du gabarit). */
+  readonly pictoEchelle: { readonly l: number; readonly h: number };
   /** Image de l'organigramme (zone economie) ; null = aucun / echec de chargement. */
   readonly organigramme: HTMLImageElement | null;
   readonly entete: string;
@@ -260,7 +260,7 @@ export async function preparerAffiche(
     gabarit,
     fond,
     picto,
-    pictoTaille: tailleEffective(pictoRef),
+    pictoEchelle: { l: tailleEffective(pictoRef), h: hauteurEffective(pictoRef) },
     organigramme,
     entete: parametres.enteteAffiche,
     economie: calculerEconomie(d, parametres),
@@ -521,9 +521,10 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
   /* --- Picto (5 × 3 cm) --- */
   if (rc.picto) {
     const e = elementEffectif(g, 'picto');
-    // Largeur du gabarit x coefficient propre au picto (centre conserve).
-    const pw = (e.w ?? 0.2) * W * rc.pictoTaille;
-    const ph = pw * (3 / 5);
+    // Boite 5 x 3 du gabarit, puis coefficients propres au picto (centre conserve).
+    const base = (e.w ?? 0.2) * W;
+    const pw = base * rc.pictoEchelle.l;
+    const ph = base * (3 / 5) * rc.pictoEchelle.h;
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,0.25)';
     ctx.shadowBlur = flou(6);
