@@ -4,7 +4,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import type { CleElementAffiche, ElementAffiche, GabaritAffiche, LangueDesignation, OrganigrammeAffiche } from '../../lib/types';
+import type { CleElementAffiche, ElementAffiche, GabaritAffiche, LangueDesignation, OrganigrammeAffiche, PanneauFidelite } from '../../lib/types';
 import {
   COULEUR_ECONOMIE_DEFAUT,
   COULEUR_ORGANIGRAMME_DEFAUT,
@@ -14,6 +14,7 @@ import {
   organigrammeEffectif,
   RECT_ECONOMIE_DEFAUT,
 } from '../../rendu/affiche';
+import { PANNEAU_FIDELITE_DEFAUT, panneauFidelite } from '../../rendu/fidelite';
 import { useDonnees } from '../../context/DonneesContext';
 import { Apercu } from '../Apercu';
 import { ChoixImage, Couleur, Curseur } from './Reglages';
@@ -67,7 +68,7 @@ export function EditeurAffiche({ gabarit, nouveau, surEnregistrer, surFermer }: 
       desAR: essaiAr,
       barre: 99.9,
       promo: 79.9,
-      fidelite: 5,
+      fidelite: 10,
       secteur: 'food' as const,
       picto: pictos[0]?.id ?? '',
       gabarit: g.id,
@@ -87,6 +88,17 @@ export function EditeurAffiche({ gabarit, nouveau, surEnregistrer, surFermer }: 
   const val = (cle: CleElementAffiche, champ: keyof ElementAffiche) => g.els[cle]?.[champ] as number | undefined;
 
   const org = organigrammeEffectif(g);
+  const pf = panneauFidelite(g);
+  /** Met a jour un champ du panneau fidelite ; undefined = valeur par defaut (le champ est retire). */
+  function majFid<K extends keyof PanneauFidelite>(champ: K, v: PanneauFidelite[K] | undefined) {
+    setG((x) => {
+      const courant: Record<string, unknown> = { ...(x.fidelite ?? { actif: false }) };
+      if (v === undefined) delete courant[champ];
+      else courant[champ] = v;
+      return { ...x, fidelite: courant as unknown as PanneauFidelite };
+    });
+  }
+  const fid = (champ: keyof typeof PANNEAU_FIDELITE_DEFAUT) => g.fidelite?.[champ as keyof PanneauFidelite] as number | undefined;
   /** Met a jour un champ de l'organigramme ; undefined = valeur par defaut. */
   function majOrg<K extends keyof OrganigrammeAffiche>(champ: K, v: OrganigrammeAffiche[K] | undefined) {
     setG((x) => {
@@ -130,6 +142,37 @@ export function EditeurAffiche({ gabarit, nouveau, surEnregistrer, surFermer }: 
             </fieldset>
           ) : null}
 
+          <fieldset className="editeur__groupe">
+            <legend>Panneau fidelite (modele 10 % / 20 %)</legend>
+            <label className="case">
+              <input type="checkbox" checked={pf.actif} onChange={(e) => majFid('actif', e.target.checked)} />
+              Activer : des qu&apos;un pourcentage de fidelite est saisi, le bloc des prix devient « prix (bleu) | gain fidelite (rose) + carte »
+            </label>
+            {pf.actif ? (
+              <>
+                <Couleur libelle="Couleur de la zone gain (rose)" valeur={g.fidelite?.couleurRose} defaut={PANNEAU_FIDELITE_DEFAUT.couleurRose} surChange={(v) => majFid('couleurRose', v)} />
+                <Couleur libelle="Couleur des libelles et de la rature" valeur={g.fidelite?.couleurTexte} defaut={PANNEAU_FIDELITE_DEFAUT.couleurTexte} surChange={(v) => majFid('couleurTexte', v)} />
+                <Curseur libelle="Bloc — gauche" valeur={fid('x')} defaut={PANNEAU_FIDELITE_DEFAUT.x} min={0} max={1} pas={0.001} surChange={(v) => majFid('x', v)} />
+                <Curseur libelle="Bloc — haut" valeur={fid('y')} defaut={PANNEAU_FIDELITE_DEFAUT.y} min={0} max={1} pas={0.001} surChange={(v) => majFid('y', v)} />
+                <Curseur libelle="Bloc — largeur" valeur={fid('w')} defaut={PANNEAU_FIDELITE_DEFAUT.w} min={0.3} max={1} pas={0.001} surChange={(v) => majFid('w', v)} />
+                <Curseur libelle="Bloc — hauteur" valeur={fid('h')} defaut={PANNEAU_FIDELITE_DEFAUT.h} min={0.1} max={0.6} pas={0.001} surChange={(v) => majFid('h', v)} />
+                <Curseur libelle="Part de la zone bleue" valeur={fid('coupure')} defaut={PANNEAU_FIDELITE_DEFAUT.coupure} min={0.3} max={0.8} pas={0.005} surChange={(v) => majFid('coupure', v)} />
+                <Curseur libelle="Carte — position horizontale" valeur={fid('carteX')} defaut={PANNEAU_FIDELITE_DEFAUT.carteX} min={0} max={1} pas={0.001} surChange={(v) => majFid('carteX', v)} />
+                <Curseur libelle="Carte — position verticale" valeur={fid('carteY')} defaut={PANNEAU_FIDELITE_DEFAUT.carteY} min={0} max={1} pas={0.001} surChange={(v) => majFid('carteY', v)} />
+                <Curseur libelle="Carte — largeur" valeur={fid('carteW')} defaut={PANNEAU_FIDELITE_DEFAUT.carteW} min={0.05} max={0.5} pas={0.001} surChange={(v) => majFid('carteW', v)} />
+                <Curseur libelle="Carte — inclinaison (°)" valeur={fid('carteAngle')} defaut={PANNEAU_FIDELITE_DEFAUT.carteAngle} min={-45} max={45} pas={0.1} surChange={(v) => majFid('carteAngle', v)} />
+                <ChoixImage
+                  image={g.fidelite?.carte ?? null}
+                  surChange={(image) => majFid('carte', image ?? undefined)}
+                  coteMax={800}
+                  libelle="Importer une autre carte"
+                  aide="Facultatif : remplace la carte de fidelite fournie avec l'application."
+                />
+                <p className="champ__aide">Les prix, le gain et les libelles du panneau suivent la taille du bloc ; seul le bloc se regle ici.</p>
+              </>
+            ) : null}
+          </fieldset>
+
           <div className="onglets-elements">
             {ELEMENTS.map((e) => (
               <button key={e.cle} type="button" className={`segments__bouton${ouvert === e.cle ? ' est-actif' : ''}`} onClick={() => setOuvert(e.cle)}>
@@ -148,6 +191,9 @@ export function EditeurAffiche({ gabarit, nouveau, surEnregistrer, surFermer }: 
             ) : null}
             {!SANS_Y.includes(ouvert) ? (
               <Curseur libelle="Position verticale" valeur={val(ouvert, 'y')} defaut={defauts[ouvert].y} min={0} max={1} pas={0.005} surChange={(v) => maj(ouvert, 'y', v)} />
+            ) : null}
+            {ouvert === 'desFR' || ouvert === 'desAR' ? (
+              <Curseur libelle="Centre horizontal (0,5 = centre de la page)" valeur={val(ouvert, 'cx')} defaut={0.5} min={0.3} max={0.7} pas={0.001} surChange={(v) => maj(ouvert, 'cx', v)} />
             ) : null}
             {!SANS_TAILLE.includes(ouvert) ? (
               <Curseur libelle="Taille" valeur={val(ouvert, 'fs')} defaut={defauts[ouvert].fs ?? 20} min={6} max={140} pas={1} surChange={(v) => maj(ouvert, 'fs', v)} />
@@ -197,7 +243,7 @@ export function EditeurAffiche({ gabarit, nouveau, surEnregistrer, surFermer }: 
 
         <div className="editeur__apercu">
           <Apercu type="AFFICHE" element={exemple} largeur={300} surcharge={surcharge} />
-          <p className="champ__aide">Exemple Food : 99,90 → 79,90 DH, fidelite 5 %.</p>
+          <p className="champ__aide">Exemple Food : 99,90 → 79,90 DH, fidelite 10 %.</p>
           <div className="champ">
             <label htmlFor="essai-fr">Désignation d&apos;essai FR — détectée : {LIBELLE_LANGUE[detecterLangueDesignation(essaiFr)]}</label>
             <input id="essai-fr" type="text" value={essaiFr} onChange={(e) => setEssaiFr(e.target.value)} />
