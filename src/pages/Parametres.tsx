@@ -8,7 +8,8 @@ import {
   chargerReglagesIa,
   enregistrerParametres,
   enregistrerReglagesIa,
-  MODELE_IA_DEFAUT,
+  MODELES_IA_DEFAUT,
+  normaliserReglagesIa,
   PARAMETRES_DEFAUT,
   type ReglagesIa,
 } from '../lib/parametres';
@@ -40,7 +41,7 @@ export function Parametres() {
   const { utilisateur } = useAuth();
   const { parametres, gabaritsA7, recharger } = useDonnees();
   const [p, setP] = useState<TypeParametres>(parametres);
-  const [ia, setIa] = useState<ReglagesIa>({ cleGroq: '', modele: MODELE_IA_DEFAUT });
+  const [ia, setIa] = useState<ReglagesIa>(() => normaliserReglagesIa({}));
   const [voirCle, setVoirCle] = useState(false);
   const [envoi, setEnvoi] = useState(false);
   const [sauvegarde, setSauvegarde] = useState<{ fichier: File; resume: ResumeSauvegarde; donnees: Parameters<typeof reprendre>[0] } | null>(null);
@@ -84,7 +85,7 @@ export function Parametres() {
     try {
       await enregistrerReglagesIa(ia);
       oublierReglagesIa();
-      const r = await traduireEnArabe('FROMAGE FONDU 8 PORTIONS');
+      const r = await traduireEnArabe('PACK PROMO : SALIM LAIT UHT ENTIER 1/2L X6');
       notifier(`Test reussi : ${r}`);
     } catch (e) {
       notifier(e instanceof Error ? e.message : 'Test impossible.', 'erreur');
@@ -216,24 +217,49 @@ export function Parametres() {
       </section>
 
       <section className="carte">
-        <h2 className="carte__titre">Traduction arabe par IA (Groq, gratuit)</h2>
+        <h2 className="carte__titre">Traduction arabe par IA</h2>
         <p className="carte__texte">
-          Creez une cle gratuite sur <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">console.groq.com/keys</a>.
-          Elle est partagee avec tous les utilisateurs connectes de l&apos;application.
+          Le nom commercial du produit est traduit seul : sans marque, sans mesure ni quantite, sans reference.
+          La cle est partagee avec tous les utilisateurs connectes de l&apos;application.
         </p>
+        <div className="segments" role="group" aria-label="Service de traduction">
+          {([['groq', 'Groq (gratuit)'], ['openai', 'OpenAI (payant)']] as const).map(([f, libelle]) => (
+            <button key={f} type="button" className={`segments__bouton${ia.fournisseur === f ? ' est-actif' : ''}`} onClick={() => setIa({ ...ia, fournisseur: f })}>
+              {libelle}
+            </button>
+          ))}
+        </div>
+        {ia.fournisseur === 'groq' ? (
+          <p className="carte__texte">
+            Creez une cle gratuite sur <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">console.groq.com/keys</a>.
+          </p>
+        ) : (
+          <p className="carte__texte">
+            Creez une cle sur <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">platform.openai.com/api-keys</a>. Service facture a
+            l&apos;usage : utilisez une cle dediee et fixez une limite de depense mensuelle dans le compte OpenAI.
+          </p>
+        )}
         <div className="grille" style={{ marginTop: 12 }}>
           <div className="champ">
-            <label htmlFor="cle">Cle API Groq</label>
-            <input id="cle" type={voirCle ? 'text' : 'password'} placeholder="gsk_…" value={ia.cleGroq} onChange={(e) => setIa({ ...ia, cleGroq: e.target.value.trim() })} autoComplete="off" />
+            <label htmlFor="cle">{ia.fournisseur === 'groq' ? 'Cle API Groq' : 'Cle API OpenAI'}</label>
+            {ia.fournisseur === 'groq' ? (
+              <input id="cle" type={voirCle ? 'text' : 'password'} placeholder="gsk_…" value={ia.cleGroq} onChange={(e) => setIa({ ...ia, cleGroq: e.target.value.trim() })} autoComplete="off" />
+            ) : (
+              <input id="cle" type={voirCle ? 'text' : 'password'} placeholder="sk-…" value={ia.cleOpenai} onChange={(e) => setIa({ ...ia, cleOpenai: e.target.value.trim() })} autoComplete="off" />
+            )}
           </div>
           <div className="champ">
             <label htmlFor="modele">Modele</label>
-            <input id="modele" type="text" value={ia.modele} onChange={(e) => setIa({ ...ia, modele: e.target.value.trim() || MODELE_IA_DEFAUT })} />
+            {ia.fournisseur === 'groq' ? (
+              <input id="modele" type="text" value={ia.modeleGroq} onChange={(e) => setIa({ ...ia, modeleGroq: e.target.value.trim() || MODELES_IA_DEFAUT.groq })} />
+            ) : (
+              <input id="modele" type="text" value={ia.modeleOpenai} onChange={(e) => setIa({ ...ia, modeleOpenai: e.target.value.trim() || MODELES_IA_DEFAUT.openai })} />
+            )}
           </div>
         </div>
         <div className="actions-formulaire">
-          <button type="button" className="bouton bouton--principal" onClick={() => void enregistrerIa()}>Enregistrer la cle</button>
-          <button type="button" className="bouton bouton--discret" onClick={() => void testerIa()} disabled={!ia.cleGroq}>Tester</button>
+          <button type="button" className="bouton bouton--principal" onClick={() => void enregistrerIa()}>Enregistrer</button>
+          <button type="button" className="bouton bouton--discret" onClick={() => void testerIa()} disabled={!(ia.fournisseur === 'groq' ? ia.cleGroq : ia.cleOpenai)}>Tester</button>
           <button type="button" className="bouton bouton--discret" onClick={() => setVoirCle((v) => !v)}>{voirCle ? 'Masquer' : 'Afficher'}</button>
         </div>
       </section>

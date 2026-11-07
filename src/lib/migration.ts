@@ -29,7 +29,7 @@ import {
   gabaritsA7ParDefaut,
   identifiantDepuisNom,
 } from './gabarits';
-import { enregistrerParametres, enregistrerReglagesIa, chargerParametres, MODELE_IA_DEFAUT } from './parametres';
+import { enregistrerParametres, enregistrerReglagesIa, chargerParametres, normaliserReglagesIa } from './parametres';
 import { recompresserDataUrl } from './images';
 import { gabaritsBalisageParDefaut } from '../rendu/balisage';
 
@@ -295,7 +295,7 @@ export async function reprendre(
     const cle = d.config.groqKey;
     await essayer('Cle IA', async () => {
       etape('Cle de traduction IA…');
-      await avecDelai(enregistrerReglagesIa({ cleGroq: cle, modele: MODELE_IA_DEFAUT }), 'Cle IA');
+      await avecDelai(enregistrerReglagesIa({ ...normaliserReglagesIa({}), fournisseur: 'groq', cleGroq: cle }), 'Cle IA');
     });
   }
 
