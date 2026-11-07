@@ -75,20 +75,52 @@ export async function enregistrerParametres(p: Parametres): Promise<void> {
 /* Traduction IA                                                               */
 /* -------------------------------------------------------------------------- */
 
+export type FournisseurIa = 'groq' | 'openai';
+
 export interface ReglagesIa {
+  /** Service utilise pour la traduction. */
+  fournisseur: FournisseurIa;
+  /** Cle API Groq (gsk_…), gratuite. */
   cleGroq: string;
-  modele: string;
+  /** Cle API OpenAI (sk-…), payante a l'usage. */
+  cleOpenai: string;
+  modeleGroq: string;
+  modeleOpenai: string;
 }
 
-export const MODELE_IA_DEFAUT = 'llama-3.3-70b-versatile';
+export const MODELES_IA_DEFAUT: Readonly<Record<FournisseurIa, string>> = {
+  groq: 'llama-3.3-70b-versatile',
+  // Alias OpenAI du modele conversationnel GPT-5 (sans raisonnement : rapide, accepte temperature = 0).
+  openai: 'gpt-5-chat-latest',
+};
+
+const texte = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
+
+/**
+ * Reglages IA valides a partir d'un document Firestore, ancien ou nouveau :
+ * l'ancien champ unique « modele » est range chez le bon fournisseur (gpt… = OpenAI, sinon Groq).
+ */
+export function normaliserReglagesIa(d: Record<string, unknown>): ReglagesIa {
+  const ancien = texte(d.modele);
+  const ancienOpenai = /^(gpt|chatgpt|o\d)/i.test(ancien);
+  const cleGroq = texte(d.cleGroq);
+  const cleOpenai = texte(d.cleOpenai);
+  const fournisseur: FournisseurIa = d.fournisseur === 'openai' || d.fournisseur === 'groq' ? d.fournisseur : cleOpenai && !cleGroq ? 'openai' : 'groq';
+  return {
+    fournisseur,
+    cleGroq,
+    cleOpenai,
+    modeleGroq: texte(d.modeleGroq) || (ancien && !ancienOpenai ? ancien : MODELES_IA_DEFAUT.groq),
+    modeleOpenai: texte(d.modeleOpenai) || (ancien && ancienOpenai ? ancien : MODELES_IA_DEFAUT.openai),
+  };
+}
 
 export async function chargerReglagesIa(): Promise<ReglagesIa> {
   try {
     const s = await getDoc(refIa());
-    const d = (s.exists() ? s.data() : {}) as Partial<ReglagesIa>;
-    return { cleGroq: d.cleGroq ?? '', modele: d.modele || MODELE_IA_DEFAUT };
+    return normaliserReglagesIa(s.exists() ? (s.data() as Record<string, unknown>) : {});
   } catch {
-    return { cleGroq: '', modele: MODELE_IA_DEFAUT };
+    return normaliserReglagesIa({});
   }
 }
 
