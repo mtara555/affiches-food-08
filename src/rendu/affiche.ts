@@ -22,6 +22,15 @@ import type {
 } from '../lib/types';
 import { assombrir, chargerImage, couperLignes, decouperMontant, POLICE, POLICE_AR, preparerCanevas } from './commun';
 import { hauteurEffective, sourcePicto, tailleEffective } from './detourage';
+import {
+  CARTE_FIDELITE_DEFAUT,
+  dessinerBarreFidelite,
+  dessinerCarteFidelite,
+  dessinerGainFidelite,
+  dessinerPromoFidelite,
+  panneauFidelite,
+  rectanglesFidelite,
+} from './fidelite';
 import { dessinerCode39, largeurCode39, nettoyerCode39 } from './code39';
 
 export const AF_L = 420;
@@ -38,6 +47,8 @@ export interface ContexteAffiche {
   readonly pictoEchelle: { readonly l: number; readonly h: number };
   /** Image de l'organigramme (zone economie) ; null = aucun / echec de chargement. */
   readonly organigramme: HTMLImageElement | null;
+  /** Carte de fidelite (panneau fidelite actif et gain > 0 uniquement). */
+  readonly carte: HTMLImageElement | null;
   readonly entete: string;
   readonly economie: ResultatEconomie;
 }
@@ -251,10 +262,13 @@ export async function preparerAffiche(
   parametres: Parametres,
 ): Promise<ContexteAffiche> {
   const pictoRef = d.picto ? pictos.get(d.picto) : undefined;
-  const [fond, picto, organigramme] = await Promise.all([
+  const economie = calculerEconomie(d, parametres);
+  const pf = panneauFidelite(gabarit);
+  const [fond, picto, organigramme, carte] = await Promise.all([
     chargerImage(gabarit.image),
     sourcePicto(pictoRef),
     chargerImage(gabarit.organigramme?.image),
+    pf.actif && economie.gainFidelite > 0 ? chargerImage(pf.carte || CARTE_FIDELITE_DEFAUT) : Promise.resolve(null),
   ]);
   return {
     gabarit,
@@ -262,8 +276,9 @@ export async function preparerAffiche(
     picto,
     pictoEchelle: { l: tailleEffective(pictoRef), h: hauteurEffective(pictoRef) },
     organigramme,
+    carte,
     entete: parametres.enteteAffiche,
-    economie: calculerEconomie(d, parametres),
+    economie,
   };
 }
 
@@ -332,7 +347,7 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
     ctx.textBaseline = 'top';
     ctx.shadowColor = 'rgba(0,0,0,0.7)';
     ctx.shadowBlur = flou(5);
-    lignes.slice(0, 2).forEach((l, i) => ctx.fillText(l, W / 2, e.y * H + i * fz * 1.15));
+    lignes.slice(0, 2).forEach((l, i) => ctx.fillText(l, (e.cx ?? 0.5) * W, e.y * H + i * fz * 1.15));
     ctx.shadowBlur = 0;
   }
 
@@ -347,7 +362,7 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
     ctx.textBaseline = 'top';
     ctx.shadowColor = 'rgba(0,0,0,0.6)';
     ctx.shadowBlur = flou(4);
-    couperLignes(ctx, des.ar, W * 0.92, 2).forEach((l, i) => ctx.fillText(l, W / 2, e.y * H + i * fz * 1.3));
+    couperLignes(ctx, des.ar, W * 0.92, 2).forEach((l, i) => ctx.fillText(l, (e.cx ?? 0.5) * W, e.y * H + i * fz * 1.3));
     ctx.shadowBlur = 0;
     ctx.direction = 'ltr';
   }
@@ -358,15 +373,30 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
    * dessines que si la regle commerciale l'autorise (AL >= 5 DH, NAL >= 10 %) ET si l'ecart
    * (prix barre − prix promo) est strictement positif. */
   const afficherEconomie = rc.economie.afficher && rc.economie.ecart > 0;
-  const rb = rectangleBleuPx(g, W, H);
+  // Panneau fidelite : bloc « prix (bleu) | gain (rose) » a la place du seul rectangle bleu.
+  const pf = panneauFidelite(g);
+  const modeFid = pf.actif && rc.economie.gainFidelite > 0;
+  const zonesFid = modeFid ? rectanglesFidelite(pf, W, H) : null;
+  const rb = zonesFid ? zonesFid.bleu : rectangleBleuPx(g, W, H);
+  /**
+   * Organigramme en pixels. En mode fidelite, il garde sa position RELATIVE au rectangle des prix :
+   * bandeau « وفر » sous le bloc bleu + rose, comme sous le rectangle bleu habituel.
+   */
+  const geometrieOrganigramme = (o: OrganigrammeAffiche) => {
+    const x0 = o.x * (W / 210);
+    const y0 = o.y * (H / 297);
+    const w0 = o.w * (W / 210);
+    const h0 = o.h * (H / 297);
+    if (!zonesFid) return { ox: x0, oy: y0, ow: w0, oh: h0 };
+    const base = rectangleBleuPx(g, W, H); // rectangle habituel du gabarit
+    const bloc = { x: pf.x * W, w: pf.w * W, bas: (pf.y + pf.h) * H };
+    return { ox: bloc.x + (x0 - base.x), oy: bloc.bas + (y0 - (base.y + base.h)), ow: bloc.w + (w0 - base.w), oh: h0 };
+  };
   {
     const e = elementEffectif(g, 'diff');
     if (afficherEconomie) {
       const o = organigrammeEffectif(g);
-      const ox = o.x * (W / 210);
-      const oy = o.y * (H / 297);
-      const ow = o.w * (W / 210);
-      const oh = o.h * (H / 297);
+      const { ox, oy, ow, oh } = geometrieOrganigramme(o);
       if (rc.organigramme) {
         ctx.drawImage(rc.organigramme, ox, oy, ow, oh);
       } else {
@@ -384,10 +414,16 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
     // Rectangle bleu derriere les prix.
     ctx.fillStyle = e.bgColor || COULEUR_ECONOMIE_DEFAUT;
     ctx.fillRect(rb.x, rb.y, rb.w, rb.h);
+    if (zonesFid) {
+      ctx.fillStyle = pf.couleurRose;
+      ctx.fillRect(zonesFid.rose.x, zonesFid.rose.y, zonesFid.rose.w, zonesFid.rose.h);
+    }
   }
 
   /* --- Prix barre (raye) --- */
-  if (d.barre > 0) {
+  if (d.barre > 0 && modeFid) {
+    dessinerBarreFidelite(ctx, d.barre, rb, pf, POLICE);
+  } else if (d.barre > 0) {
     const e = elementEffectif(g, 'prixBarre');
     const [ent, dec] = decouperMontant(d.barre);
     const fzI = e.fs ?? 30;
@@ -416,7 +452,9 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
   }
 
   /* --- Prix promo --- */
-  if (d.promo > 0) {
+  if (d.promo > 0 && modeFid) {
+    dessinerPromoFidelite(ctx, d.promo, rb, pf, POLICE, k);
+  } else if (d.promo > 0) {
     const e = elementEffectif(g, 'prixPromo');
     const [ent, dec] = decouperMontant(d.promo);
     const suite = `,${dec} DH`;
@@ -451,12 +489,9 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
   if (afficherEconomie) {
     const e = elementEffectif(g, 'diff');
     const o = organigrammeEffectif(g);
-    const ox = o.x * (W / 210);
-    const oy = o.y * (H / 297);
-    const ow = o.w * (W / 210);
-    const oh = o.h * (H / 297);
+    const { ox, oy, ow, oh } = geometrieOrganigramme(o);
     // Bande de texte : entre le bas du rectangle bleu et le bas de l'organigramme.
-    const basBleu = (e.diffRectY ?? RECT_ECONOMIE_DEFAUT.y) * H + (e.diffRectH ?? RECT_ECONOMIE_DEFAUT.h) * H;
+    const basBleu = zonesFid ? rb.y + rb.h : (e.diffRectY ?? RECT_ECONOMIE_DEFAUT.y) * H + (e.diffRectH ?? RECT_ECONOMIE_DEFAUT.h) * H;
     const yTexte = (Math.min(Math.max(basBleu, oy), oy + oh) + oy + oh) / 2;
     const fz = e.fs ?? 30;
     ctx.fillStyle = e.color || '#FFE600';
@@ -471,8 +506,14 @@ export function dessinerAffiche(canvas: HTMLCanvasElement, d: DonneesAffiche, rc
     ctx.direction = 'ltr';
   }
 
-  /* --- Gain fidelite --- */
-  if (rc.economie.gainFidelite > 0) {
+  /* --- Gain fidelite : panneau rose + carte (mode fidelite) --- */
+  if (zonesFid) {
+    dessinerGainFidelite(ctx, rc.economie.gainFidelite, zonesFid.rose, pf, POLICE);
+    if (rc.carte) dessinerCarteFidelite(ctx, rc.carte, { l: rc.carte.naturalWidth, h: rc.carte.naturalHeight }, pf, W, H);
+  }
+
+  /* --- Gain fidelite (affichage simple, hors panneau) --- */
+  if (rc.economie.gainFidelite > 0 && !zonesFid) {
     const e = elementEffectif(g, 'fidelite');
     const [ent, dec] = decouperMontant(rc.economie.gainFidelite);
     const fzI = e.fs ?? 20;

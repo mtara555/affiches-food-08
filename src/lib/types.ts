@@ -110,6 +110,11 @@ export interface ElementAffiche {
   color?: string;
   /** Rapport taille decimales / entier (prix). */
   decScale?: number;
+  /**
+   * Designations FR / AR : centre horizontal (fraction de la largeur). Absent = centre de la page.
+   * Permet d'aligner le texte sur un cadre decentre du fond.
+   */
+  cx?: number;
   /** Picto : largeur en fraction. */
   w?: number;
   h?: number;
@@ -149,6 +154,41 @@ export interface OrganigrammeAffiche {
   h: number;
 }
 
+/**
+ * Panneau fidelite (optionnel, retro-compatible) : quand un pourcentage de fidelite est saisi,
+ * le bloc des prix devient « prix a gauche (bleu) + gain a droite (rose) » avec la carte de fidelite.
+ * Toutes les positions sont des fractions de la page (largeur W, hauteur H) ; absent = defaut.
+ */
+export interface PanneauFidelite {
+  actif: boolean;
+  /** Image de la carte (data URL) ; null = carte fournie avec l'application. */
+  carte?: string | null;
+  couleurRose?: string;
+  /** Couleur des libelles « ربح / على بطاقتكم » et de la rature du prix barre. */
+  couleurTexte?: string;
+  /** Couleur du montant du gain. */
+  couleurGain?: string;
+  /** Couleur des prix (barre et promo) sur la zone bleue. */
+  couleurPrix?: string;
+  /** Couleur de la rature du prix barre. */
+  couleurRature?: string;
+  /** Bloc complet (bleu + rose). */
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
+  /** Part de la largeur du bloc occupee par la zone bleue (0,3 a 0,8). */
+  coupure?: number;
+  /** Carte : centre (x, y en fractions de W et H), taille (fractions de W), angle en degres. */
+  carteX?: number;
+  carteY?: number;
+  carteW?: number;
+  carteH?: number;
+  carteAngle?: number;
+  /** Taille des libelles arabes (px, repere 420 x 594). */
+  fsLibelle?: number;
+}
+
 export interface GabaritAffiche {
   readonly id: string;
   readonly nom: string;
@@ -160,6 +200,8 @@ export interface GabaritAffiche {
   readonly els: Partial<Record<CleElementAffiche, ElementAffiche>>;
   /** Organigramme de la zone economie ; absent sur les anciens gabarits (= aucun). */
   readonly organigramme?: OrganigrammeAffiche;
+  /** Panneau fidelite ; absent sur les anciens gabarits (= desactive). */
+  readonly fidelite?: PanneauFidelite;
   readonly ordre: number;
 }
 

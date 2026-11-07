@@ -61,6 +61,19 @@ export function FormulaireAffiche({ enEdition, surValider, surAnnuler }: Props) 
   const [envoi, setEnvoi] = useState(false);
 
   const gabaritEffectif = gabaritsAffiche.some((g) => g.id === gabarit) ? gabarit : (gabaritsAffiche[0]?.id ?? '');
+  const gabaritsFidelite = gabaritsAffiche.filter((g) => g.fidelite?.actif);
+  const enModeFidelite = gabaritsFidelite.some((g) => g.id === gabaritEffectif);
+
+  /**
+   * Saisie du pourcentage de fidelite (10 %, 20 %…) : choisit automatiquement le modele « panneau fidelite »
+   * si le gabarit courant ne l'est pas. Le gabarit reste modifiable ensuite.
+   */
+  function choisirFidelite(valeur: string) {
+    setFidelite(valeur);
+    if (!(versNombre(valeur) > 0) || enModeFidelite) return;
+    const modele = gabaritsFidelite[0];
+    if (modele) setGabarit(modele.id);
+  }
 
   useEffect(() => {
     if (!enEdition) return;
@@ -186,7 +199,7 @@ export function FormulaireAffiche({ enEdition, surValider, surAnnuler }: Props) 
           </div>
           <div className="champ">
             <label htmlFor="fid">Fidelite (%)</label>
-            <input id="fid" type="text" inputMode="decimal" placeholder="—" value={fidelite} onChange={(e) => setFidelite(e.target.value)} onKeyDown={entree} />
+            <input id="fid" type="text" inputMode="decimal" placeholder="—" value={fidelite} onChange={(e) => choisirFidelite(e.target.value)} onKeyDown={entree} />
           </div>
           <div className="champ">
             <label htmlFor="gab">Gabarit</label>
@@ -197,6 +210,24 @@ export function FormulaireAffiche({ enEdition, surValider, surAnnuler }: Props) 
             </select>
           </div>
         </div>
+
+        <div className="segments" role="group" aria-label="Fidelite">
+          {[{ v: '', libelle: 'Sans fidelite' }, { v: '10', libelle: 'Fidelite 10 %' }, { v: '20', libelle: 'Fidelite 20 %' }].map((o) => (
+            <button
+              key={o.v || 'aucune'}
+              type="button"
+              className={`segments__bouton${(versNombre(fidelite) || 0) === (Number(o.v) || 0) ? ' est-actif' : ''}`}
+              onClick={() => choisirFidelite(o.v)}
+            >
+              {o.libelle}
+            </button>
+          ))}
+        </div>
+        {versNombre(fidelite) > 0 && gabaritsFidelite.length === 0 ? (
+          <p className="champ__aide">Aucun gabarit n&apos;a le panneau fidelite : un administrateur peut l&apos;activer dans « Gabarits &amp; pictos ».</p>
+        ) : versNombre(fidelite) > 0 && enModeFidelite ? (
+          <p className="champ__aide">Modele fidelite applique automatiquement (gain = prix promo × {fidelite} %).</p>
+        ) : null}
 
         <div className="regles-grille">
           <div className={`regle${eco.afficher ? ' est-active' : ''}`}>
