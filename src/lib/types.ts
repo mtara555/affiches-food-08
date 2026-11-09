@@ -48,6 +48,11 @@ export const ARTICLE_VIDE: ArticleSaisi = {
  * Valeurs par defaut extraites du modele PowerPoint (voir rendu/a7-layout.ts).
  */
 export interface LayoutA7 {
+  /**
+   * Ingredients en francais (defaut : oui). Faux = arabe seul : un seul cadre, avec le titre
+   * « المكونات : (المواد المسببة للحساسية تحمل اللون الأحمر) » en tete.
+   */
+  ingFr?: boolean;
   yDesFR?: number;
   yDesAR?: number;
   fzDesFR?: number;
