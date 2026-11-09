@@ -122,7 +122,7 @@ export function EditeurA7({ gabarit, surEnregistrer, surFermer }: Props) {
 
   const surcharge = useMemo(() => ({ a7: g }), [g]);
 
-  const majLayout = (cle: keyof LayoutA7, v: number | string | undefined) =>
+  const majLayout = (cle: keyof LayoutA7, v: number | string | boolean | undefined) =>
     setG((x) => {
       const layout = { ...x.layout } as Record<string, unknown>;
       if (v === undefined) delete layout[cle];
@@ -148,6 +148,19 @@ export function EditeurA7({ gabarit, surEnregistrer, surFermer }: Props) {
           {GROUPES.filter((gr) => !gr.fidelite || fidelite).map((gr) => (
             <fieldset key={gr.titre} className="editeur__groupe">
               <legend>{gr.titre}</legend>
+              {gr.titre === 'Ingredients' ? (
+                <>
+                  <label className="case">
+                    <input type="checkbox" checked={g.layout.ingFr !== false} onChange={(e) => majLayout('ingFr', e.target.checked ? undefined : false)} />
+                    Ingredients en francais
+                  </label>
+                  {g.layout.ingFr === false ? (
+                    <p className="champ__aide">
+                      Arabe seul : un seul cadre, a la place des deux, avec le titre « المكونات : (المواد المسببة للحساسية تحمل اللون الأحمر) » en tete.
+                    </p>
+                  ) : null}
+                </>
+              ) : null}
               {gr.champs.map((c) => (
                 <Curseur
                   key={c.cle}

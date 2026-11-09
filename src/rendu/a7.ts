@@ -346,7 +346,10 @@ export function dessinerA7(canvas: HTMLCanvasElement, item: DonneesA7, rc: Conte
     const PX = 5 * ef;
     const PY = 4 * ef;
     const R = 6 * ef;
-    const cadre = (y: number, h: number, texte: string, rtl: boolean, depart: number) => {
+    /** Titre du cadre arabe en mode « arabe seul » (le passage entre parentheses suit la couleur des allergenes). */
+    const TITRE_AR = 'المكونات :';
+    const NOTE_AR = '(المواد المسببة للحساسية تحمل اللون الأحمر)';
+    const cadre = (y: number, h: number, texte: string, rtl: boolean, depart: number, avecTitre = false, departTitre = depart) => {
       ctx.save();
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
@@ -366,8 +369,37 @@ export function dessinerA7(canvas: HTMLCanvasElement, item: DonneesA7, rc: Conte
         interligne: rtl ? 1.3 : 1.2,
       };
       const maxW = boxW - PX * 2;
-      const fz = tailleAjustee(ctx, texte, maxW, h - PY * 2, base, depart, 5 * ef, rtl);
-      ecrireIngredients(ctx, texte, rtl ? boxX + PX + maxW : boxX + PX, y + PY, maxW, { ...base, taille: fz }, rtl);
+      let yTexte = y + PY;
+      let hTexte = h - PY * 2;
+      if (avecTitre) {
+        // Titre en tete du cadre, sur une ligne (taille reduite si elle deborde), aligne a droite comme le texte arabe.
+        let fzT = departTitre;
+        const gap = () => fzT * 0.35;
+        const largeur = () => {
+          ctx.font = `700 ${fzT}px ${POLICE_AR}`;
+          const w1 = ctx.measureText(TITRE_AR).width;
+          ctx.font = `600 ${fzT}px ${POLICE_AR}`;
+          return w1 + gap() + ctx.measureText(NOTE_AR).width;
+        };
+        while (fzT > 4 * ef && largeur() > maxW) fzT -= 0.25;
+        const xDroit = boxX + PX + maxW;
+        ctx.direction = 'rtl';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'top';
+        ctx.font = `700 ${fzT}px ${POLICE_AR}`;
+        ctx.fillStyle = base.couleur;
+        ctx.fillText(TITRE_AR, xDroit, yTexte);
+        const w1 = ctx.measureText(TITRE_AR).width;
+        ctx.font = `600 ${fzT}px ${POLICE_AR}`;
+        ctx.fillStyle = base.couleurAllergene;
+        ctx.fillText(NOTE_AR, xDroit - w1 - gap(), yTexte);
+        ctx.direction = 'ltr';
+        const hLigne = fzT * 1.4;
+        yTexte += hLigne;
+        hTexte -= hLigne;
+      }
+      const fz = tailleAjustee(ctx, texte, maxW, hTexte, base, depart, 5 * ef, rtl);
+      ecrireIngredients(ctx, texte, rtl ? boxX + PX + maxW : boxX + PX, yTexte, maxW, { ...base, taille: fz }, rtl);
       ctx.restore();
     };
     const ingFr = item.ingredientsFr.trim();
@@ -384,8 +416,14 @@ export function dessinerA7(canvas: HTMLCanvasElement, item: DonneesA7, rc: Conte
       hAr *= r;
     } else if (ingFr && !ingAr) hFr = Math.min(hFr, dispo);
     else if (ingAr && !ingFr) hAr = Math.min(hAr, dispo);
-    if (ingFr) cadre(boxY, hFr, ingFr, false, fzIngFR);
-    if (ingAr) cadre(ingFr ? boxY + hFr + ecart : boxY, hAr, ingAr, true, fzIngAR);
+    if (L.ingFr === false) {
+      // Arabe seul : le cadre arabe occupe la place des deux cadres, titre en tete.
+      // Plus de place que d'habitude : texte un peu plus grand (reduit automatiquement s'il deborde).
+      if (ingAr) cadre(boxY, Math.min(boxH + ecart + hAr, dispo), ingAr, true, fzIngAR * 1.3, true, fzIngAR * 1.15);
+    } else {
+      if (ingFr) cadre(boxY, hFr, ingFr, false, fzIngFR);
+      if (ingAr) cadre(ingFr ? boxY + hFr + ecart : boxY, hAr, ingAr, true, fzIngAR);
+    }
   }
 
   /* --- Origine + drapeau --- */
